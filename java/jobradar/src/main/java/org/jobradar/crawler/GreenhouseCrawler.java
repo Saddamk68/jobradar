@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,9 +26,13 @@ public class GreenhouseCrawler implements AtsCrawler {
         List<JobPosting> jobs = new ArrayList<>();
 
         try {
-
+            // normalize URL and trim trailing slash, then extract board name
+            String normalizedUrl = atsJobUrl == null ? "" : atsJobUrl;
+            if (normalizedUrl.endsWith("/")) {
+                normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length() - 1);
+            }
             // Extract board name from URL
-            String boardName = atsJobUrl.substring(atsJobUrl.lastIndexOf("/") + 1);
+            String boardName = normalizedUrl.substring(normalizedUrl.lastIndexOf("/") + 1);
 
             String apiUrl = "https://boards-api.greenhouse.io/v1/boards/"
                     + boardName
@@ -45,18 +51,34 @@ public class GreenhouseCrawler implements AtsCrawler {
 
                 String title = jobNode.get("title").asText();
                 String jobUrl = jobNode.get("absolute_url").asText();
+                JsonNode locationNode = jobNode.get("location");
+                String location = locationNode != null && locationNode.has("name")
+                        ? locationNode.get("name").asText()
+                        : "";
                 String description = jobNode.has("content")
                         ? jobNode.get("content").asText()
                         : "";
 
+                String updatedAtRaw = jobNode.has("updated_at")
+                        ? jobNode.get("updated_at").asText()
+                        : null;
+
+                OffsetDateTime updatedAt = null;
+
+                if (updatedAtRaw != null) {
+                    updatedAt = OffsetDateTime.parse(updatedAtRaw);
+                }
+
                 JobPosting job = JobPosting.builder()
+                        .active(true)
+                        .location(location)
                         .company(company)
                         .atsPlatform(platform)
                         .jobTitle(title)
                         .jobUrl(jobUrl)
                         .jobDescription(description)
                         .postedDate(LocalDate.now())
-                        .active(true)
+                        .lastSeenAt(updatedAt != null ? updatedAt.toLocalDateTime() : LocalDateTime.now())
                         .build();
 
                 jobs.add(job);

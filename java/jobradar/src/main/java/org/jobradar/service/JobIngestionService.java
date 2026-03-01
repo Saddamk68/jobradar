@@ -2,8 +2,10 @@ package org.jobradar.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.jobradar.client.PythonClient;
 import org.jobradar.client.dto.PythonAnalyzeResponse;
+import org.jobradar.crawler.AtsCrawler;
 import org.jobradar.crawler.CrawlerFactory;
 import org.jobradar.entity.Company;
 import org.jobradar.entity.CompanyAts;
@@ -12,7 +14,6 @@ import org.jobradar.entity.JobPosting;
 import org.jobradar.repository.CompanyAtsRepository;
 import org.jobradar.repository.JobAnalysisRepository;
 import org.jobradar.repository.JobPostingRepository;
-import org.jobradar.crawler.AtsCrawler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,91 +30,157 @@ public class JobIngestionService {
 
     private final CompanyAtsRepository companyAtsRepository;
     private final JobPostingRepository jobPostingRepository;
+    private final JobAnalysisRepository jobAnalysisRepository;
     private final CrawlerFactory crawlerFactory;
     private final PythonClient pythonClient;
-    private final JobAnalysisRepository jobAnalysisRepository;
 
-    @Transactional
     public void ingestJobs() {
 
-        List<CompanyAts> mappings = companyAtsRepository.findByActiveTrue();
+        List<CompanyAts> mappings = companyAtsRepository.findActiveWithAssociations();
 
         for (CompanyAts mapping : mappings) {
 
-            Company company = mapping.getCompany();
-
-            AtsCrawler crawler = crawlerFactory.getCrawler(
-                    mapping.getAtsPlatform().getName());
-
-            List<JobPosting> crawledJobs = crawler.crawl(
-                    mapping.getAtsJobUrl(),
-                    company,
-                    mapping.getAtsPlatform()
-            );
-
-            Set<String> crawledUrls = new HashSet<>();
-
-            for (JobPosting job : crawledJobs) {
-
-                crawledUrls.add(job.getJobUrl());
-
-                JobPosting savedJob;
-
-                Optional<JobPosting> existingOpt =
-                        jobPostingRepository.findByJobUrl(job.getJobUrl());
-
-                if (existingOpt.isPresent()) {
-
-                    savedJob = existingOpt.get();
-                    savedJob.setLastSeenAt(LocalDateTime.now());
-                    savedJob.setActive(true);
-
-                } else {
-
-                    job.setActive(true);
-                    savedJob = jobPostingRepository.save(job);
-
-                    // 🔥 Only analyze NEW job
-                    PythonAnalyzeResponse analysis =
-                            pythonClient.analyze(savedJob.getJobDescription(), 5);
-
-                    if (analysis != null) {
-
-                        JobAnalysis jobAnalysis = JobAnalysis.builder()
-                                .job(savedJob)
-                                .matchScore(analysis.getMatchScore())
-                                .extractedSkills(
-                                        analysis.getExtractedSkills() != null
-                                                ? String.join(",", analysis.getExtractedSkills())
-                                                : null
-                                )
-                                .experienceRange(
-                                        analysis.getExperienceDetected() != null
-                                                ? analysis.getExperienceDetected().toString()
-                                                : null
-                                )
-                                .signals(analysis.getRoleType())
-                                .analyzedAt(LocalDateTime.now())
-                                .build();
-
-                        jobAnalysisRepository.save(jobAnalysis);
-                    }
-                }
-            }
-
-            // Mark stale jobs inactive
-            List<JobPosting> existingActive =
-                    jobPostingRepository.findByCompanyAndActiveTrue(company);
-
-            for (JobPosting existingJob : existingActive) {
-
-                if (!crawledUrls.contains(existingJob.getJobUrl())) {
-                    existingJob.setActive(false);
-                }
+            try {
+                ingestCompany(mapping);
+            } catch (Exception e) {
+                log.error("Failed ingestion for company: {}",
+                        mapping.getCompany().getName(), e);
             }
         }
 
         log.info("Job ingestion cycle completed.");
+    }
+
+    @Transactional
+    public void ingestCompany(CompanyAts mapping) {
+
+        Company company = mapping.getCompany();
+
+        log.info("Starting ingestion for company: {}", company.getName());
+
+        AtsCrawler crawler = crawlerFactory.getCrawler(
+                mapping.getAtsPlatform().getName());
+
+        List<JobPosting> crawledJobs = crawler.crawl(
+                mapping.getAtsJobUrl(),
+                company,
+                mapping.getAtsPlatform()
+        );
+
+        Set<String> crawledUrls = new HashSet<>();
+
+        for (JobPosting job : crawledJobs) {
+
+            crawledUrls.add(job.getJobUrl());
+
+            // 🔥 Engineer / Developer title filter
+            if (!isTechnicalTitle(job.getJobTitle())) continue;
+
+            Optional<JobPosting> existingOpt =
+                    jobPostingRepository.findByJobUrl(job.getJobUrl());
+
+            if (existingOpt.isPresent()) {
+
+                JobPosting existing = existingOpt.get();
+                existing.setLastSeenAt(job.getLastSeenAt());
+                existing.setActive(true);
+
+            } else {
+
+                // 🔥 14-day filter
+                if (!isRecentJob(job)) continue;
+
+                job.setActive(true);
+                JobPosting savedJob = jobPostingRepository.save(job);
+
+                PythonAnalyzeResponse analysis =
+                        pythonClient.analyze(savedJob.getJobDescription(), 5);
+
+                if (analysis != null && analysis.getMatchScore() != null) {
+
+                    JobAnalysis jobAnalysis = JobAnalysis.builder()
+                            .job(savedJob)
+                            .matchScore(analysis.getMatchScore())
+                            .extractedSkills(
+                                    analysis.getExtractedSkills() != null
+                                            ? String.join(",", analysis.getExtractedSkills())
+                                            : null
+                            )
+                            .experienceRange(
+                                    analysis.getExperienceDetected() != null
+                                            ? analysis.getExperienceDetected().toString()
+                                            : null
+                            )
+                            .signals(analysis.getRoleType())
+                            .analyzedAt(LocalDateTime.now())
+                            .build();
+
+                    jobAnalysisRepository.save(jobAnalysis);
+                }
+            }
+        }
+
+        // 🔥 MARK STALE JOBS INACTIVE
+        List<JobPosting> existingActive =
+                jobPostingRepository.findByCompanyAndActiveTrue(company);
+
+        for (JobPosting existingJob : existingActive) {
+            if (!crawledUrls.contains(existingJob.getJobUrl())) {
+                existingJob.setActive(false);
+            }
+        }
+
+        log.info("Completed ingestion for company: {}", company.getName());
+    }
+
+    private boolean isTechnicalTitle(String title) {
+        String t = title.toLowerCase();
+        return t.contains("engineer")
+                || t.contains("developer")
+                || t.contains("backend")
+                || t.contains("java")
+                || t.contains("software");
+    }
+
+    private boolean isIndiaLocation(JobPosting job) {
+        if (!StringUtils.isBlank(job.getLocation())) {
+            String location = job.getLocation().toLowerCase();
+            return location.contains("india")
+                    || location.contains("remote")
+                    || location.contains("bangalore")
+                    || location.contains("bengaluru")
+                    || location.contains("hyderabad")
+                    || location.contains("pune")
+                    || location.contains("chennai")
+                    || location.contains("jaipur")
+                    || location.contains("gurgaon")
+                    || location.contains("noida")
+                    || location.contains("delhi ncr");
+        } else {
+            if (job.getJobDescription() == null) return false;
+
+            String text = job.getJobDescription().toLowerCase();
+            return text.contains("india")
+                    || text.contains("remote")
+                    || text.contains("bangalore")
+                    || text.contains("bengaluru")
+                    || text.contains("hyderabad")
+                    || text.contains("pune")
+                    || text.contains("chennai")
+                    || text.contains("jaipur")
+                    || text.contains("gurgaon")
+                    || text.contains("noida")
+                    || text.contains("delhi ncr");
+        }
+    }
+
+    private boolean isRecentJob(JobPosting job) {
+        if (job.getLastSeenAt() == null) {
+            return false;
+        }
+
+        LocalDateTime fourteenDaysAgo = LocalDateTime.now().minusDays(14);
+        return job.getLastSeenAt().isAfter(fourteenDaysAgo);
     }
 
 }
