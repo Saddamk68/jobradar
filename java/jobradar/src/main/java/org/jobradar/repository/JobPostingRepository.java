@@ -3,6 +3,8 @@ package org.jobradar.repository;
 import org.jobradar.entity.Company;
 import org.jobradar.entity.JobPosting;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -15,6 +17,13 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
     boolean existsByJobUrl(String jobUrl);
 
     Optional<JobPosting> findByJobUrl(String jobUrl);
+
+    @Query("""
+                SELECT jp 
+                FROM JobPosting jp
+                WHERE jp.company = :company
+            """)
+    List<JobPosting> findAllByCompany(@Param("company") Company company);
 
     List<JobPosting> findByCompanyAndActiveTrue(Company company);
 

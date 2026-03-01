@@ -18,9 +18,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -69,6 +70,15 @@ public class JobIngestionService {
 
         Set<String> crawledUrls = new HashSet<>();
 
+        List<JobPosting> existingJobs =
+                jobPostingRepository.findAllByCompany(company);
+
+        Map<String, JobPosting> existingJobMap = new HashMap<>();
+
+        for (JobPosting existing : existingJobs) {
+            existingJobMap.put(existing.getJobUrl(), existing);
+        }
+
         for (JobPosting job : crawledJobs) {
 
             crawledUrls.add(job.getJobUrl());
@@ -79,11 +89,9 @@ public class JobIngestionService {
             // 🔥 Engineer / Developer title filter (flexible)
             if (!isTechnicalTitle(job.getJobTitle())) continue;
 
-            Optional<JobPosting> existingOpt =
-                    jobPostingRepository.findByJobUrl(job.getJobUrl());
+            JobPosting existing = existingJobMap.get(job.getJobUrl());
 
-            if (existingOpt.isPresent()) {
-                JobPosting existing = existingOpt.get();
+            if (existing != null) {
                 existing.setLastSeenAt(job.getLastSeenAt());
                 existing.setActive(true);
             } else {
