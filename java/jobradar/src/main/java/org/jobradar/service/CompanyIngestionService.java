@@ -97,6 +97,9 @@ public class CompanyIngestionService {
                 if (!isRecentJob(job)) continue;
 
                 job.setActive(true);
+                job.setFirstSeenAt(LocalDateTime.now());
+                job.setLastSeenAt(LocalDateTime.now());
+
                 JobPosting savedJob = jobPostingRepository.save(job);
                 jobsToAnalyze.add(savedJob);
                 newJobsCount++;
