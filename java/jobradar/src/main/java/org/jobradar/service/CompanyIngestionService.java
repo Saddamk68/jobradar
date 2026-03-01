@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,7 +38,6 @@ public class CompanyIngestionService {
     public void ingestCompany(CompanyAts mapping) {
 
         Company company = mapping.getCompany();
-
         log.info("Starting ingestion for company: {}", company.getName());
 
         AtsCrawler crawler = crawlerFactory.getCrawler(
@@ -55,19 +55,19 @@ public class CompanyIngestionService {
                 jobPostingRepository.findAllByCompany(company);
 
         Map<String, JobPosting> existingJobMap = new HashMap<>();
-
         for (JobPosting existing : existingJobs) {
             existingJobMap.put(existing.getJobUrl(), existing);
         }
+
+        // 🔥 Collect new jobs for batch Python analysis
+        List<JobPosting> jobsToAnalyze = new ArrayList<>();
 
         for (JobPosting job : crawledJobs) {
 
             crawledUrls.add(job.getJobUrl());
 
-            // 🔥 India location filter
             if (!isIndiaLocation(job)) continue;
 
-            // 🔥 Engineer / Developer title filter (flexible)
             if (!isTechnicalTitle(job.getJobTitle())) continue;
 
             JobPosting existing = existingJobMap.get(job.getJobUrl());
@@ -76,19 +76,34 @@ public class CompanyIngestionService {
                 existing.setLastSeenAt(job.getLastSeenAt());
                 existing.setActive(true);
             } else {
-                // 🔥 14-day filter using updatedAt (if available)
+
                 if (!isRecentJob(job)) continue;
 
                 job.setActive(true);
                 JobPosting savedJob = jobPostingRepository.save(job);
 
-                PythonAnalyzeResponse analysis =
-                        pythonClient.analyze(savedJob.getJobDescription(), 5);
+                jobsToAnalyze.add(savedJob);
+            }
+        }
+
+        // 🔥 Batch Python Analysis
+        if (!jobsToAnalyze.isEmpty()) {
+
+            List<PythonAnalyzeResponse> analyses =
+                    pythonClient.batchAnalyze(jobsToAnalyze);
+
+            for (int i = 0; i < jobsToAnalyze.size(); i++) {
+
+                JobPosting job = jobsToAnalyze.get(i);
+
+                if (i >= analyses.size()) break;
+
+                PythonAnalyzeResponse analysis = analyses.get(i);
 
                 if (analysis != null && analysis.getMatchScore() != null) {
 
                     JobAnalysis jobAnalysis = JobAnalysis.builder()
-                            .job(savedJob)
+                            .job(job)
                             .matchScore(analysis.getMatchScore())
                             .extractedSkills(
                                     analysis.getExtractedSkills() != null
@@ -109,7 +124,7 @@ public class CompanyIngestionService {
             }
         }
 
-        // 🔥 MARK STALE JOBS INACTIVE
+        // 🔥 Mark stale jobs inactive
         List<JobPosting> existingActive =
                 jobPostingRepository.findByCompanyAndActiveTrue(company);
 
@@ -166,9 +181,7 @@ public class CompanyIngestionService {
     }
 
     private boolean isRecentJob(JobPosting job) {
-        if (job.getLastSeenAt() == null) {
-            return false;
-        }
+        if (job.getLastSeenAt() == null) return false;
 
         LocalDateTime fourteenDaysAgo = LocalDateTime.now().minusDays(14);
         return job.getLastSeenAt().isAfter(fourteenDaysAgo);

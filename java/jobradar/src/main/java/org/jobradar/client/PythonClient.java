@@ -4,13 +4,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jobradar.client.dto.PythonAnalyzeRequest;
 import org.jobradar.client.dto.PythonAnalyzeResponse;
+import org.jobradar.entity.JobPosting;
 import org.jobradar.entity.TargetSkill;
 import org.jobradar.repository.TargetSkillRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -18,10 +24,9 @@ import java.util.List;
 public class PythonClient {
 
     private final TargetSkillRepository targetSkillRepository;
+    private final RestTemplate restTemplate;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-
-    private static final String PYTHON_URL = "http://127.0.0.1:8000/analyze";
+    private static final String PYTHON_BASE_URL = "http://127.0.0.1:8000";
 
     public PythonAnalyzeResponse analyze(String jobDescription, int experienceYears) {
         List<String> skills = targetSkillRepository.findByActiveTrue()
@@ -39,7 +44,7 @@ public class PythonClient {
 
             ResponseEntity<PythonAnalyzeResponse> response =
                     restTemplate.postForEntity(
-                            PYTHON_URL,
+                            PYTHON_BASE_URL + "/analyze",
                             request,
                             PythonAnalyzeResponse.class
                     );
@@ -49,6 +54,37 @@ public class PythonClient {
         } catch (Exception e) {
             log.error("Error calling Python service", e);
             return null;
+        }
+    }
+
+    public List<PythonAnalyzeResponse> batchAnalyze(List<JobPosting> jobs) {
+        List<Map<String, Object>> requestBody = new ArrayList<>();
+        List<String> skills = targetSkillRepository.findByActiveTrue()
+                .stream()
+                .map(TargetSkill::getSkillName)
+                .toList();
+
+        for (JobPosting job : jobs) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("jobDescription", job.getJobDescription());
+            map.put("targetSkills", skills);
+            map.put("experienceYears", 5);
+            requestBody.add(map);
+        }
+
+        try {
+            ResponseEntity<PythonAnalyzeResponse[]> response =
+                    restTemplate.postForEntity(
+                            PYTHON_BASE_URL + "/analyze/batch",
+                            requestBody,
+                            PythonAnalyzeResponse[].class
+                    );
+
+            return Arrays.asList(response.getBody());
+
+        } catch (Exception e) {
+            log.error("Error calling Python batch service", e);
+            return Collections.emptyList();
         }
     }
 
