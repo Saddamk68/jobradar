@@ -27,6 +27,8 @@ public class PythonClient {
     private final RestTemplate restTemplate;
 
     private static final String PYTHON_BASE_URL = "http://127.0.0.1:8000";
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 1000;
 
     public PythonAnalyzeResponse analyze(String jobDescription, int experienceYears) {
         List<String> skills = targetSkillRepository.findByActiveTrue()
@@ -40,21 +42,27 @@ public class PythonClient {
                 .experienceYears(experienceYears)
                 .build();
 
-        try {
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                ResponseEntity<PythonAnalyzeResponse> response =
+                        restTemplate.postForEntity(
+                                PYTHON_BASE_URL + "/analyze",
+                                request,
+                                PythonAnalyzeResponse.class
+                        );
+                return response.getBody();
 
-            ResponseEntity<PythonAnalyzeResponse> response =
-                    restTemplate.postForEntity(
-                            PYTHON_BASE_URL + "/analyze",
-                            request,
-                            PythonAnalyzeResponse.class
-                    );
+            } catch (Exception e) {
+                log.warn("Python analyze attempt {} failed", attempt, e);
 
-            return response.getBody();
-
-        } catch (Exception e) {
-            log.error("Error calling Python service", e);
-            return null;
+                if (attempt == MAX_RETRIES) {
+                    log.error("Python analyze failed after {} attempts", MAX_RETRIES);
+                    return null;
+                }
+                sleep();
+            }
         }
+        return null;
     }
 
     public List<PythonAnalyzeResponse> batchAnalyze(List<JobPosting> jobs) {
@@ -72,19 +80,35 @@ public class PythonClient {
             requestBody.add(map);
         }
 
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                ResponseEntity<PythonAnalyzeResponse[]> response =
+                        restTemplate.postForEntity(
+                                PYTHON_BASE_URL + "/analyze/batch",
+                                requestBody,
+                                PythonAnalyzeResponse[].class
+                        );
+
+                return Arrays.asList(response.getBody());
+
+            } catch (Exception e) {
+                log.warn("Python batch analyze attempt {} failed", attempt, e);
+
+                if (attempt == MAX_RETRIES) {
+                    log.error("Python batch analyze failed after {} attempts", MAX_RETRIES);
+                    return Collections.emptyList();
+                }
+                sleep();
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private void sleep() {
         try {
-            ResponseEntity<PythonAnalyzeResponse[]> response =
-                    restTemplate.postForEntity(
-                            PYTHON_BASE_URL + "/analyze/batch",
-                            requestBody,
-                            PythonAnalyzeResponse[].class
-                    );
-
-            return Arrays.asList(response.getBody());
-
-        } catch (Exception e) {
-            log.error("Error calling Python batch service", e);
-            return Collections.emptyList();
+            Thread.sleep(RETRY_DELAY_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
