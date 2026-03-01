@@ -73,21 +73,21 @@ public class JobIngestionService {
 
             crawledUrls.add(job.getJobUrl());
 
-            // 🔥 Engineer / Developer title filter
+            // 🔥 India location filter
+            if (!isIndiaLocation(job)) continue;
+
+            // 🔥 Engineer / Developer title filter (flexible)
             if (!isTechnicalTitle(job.getJobTitle())) continue;
 
             Optional<JobPosting> existingOpt =
                     jobPostingRepository.findByJobUrl(job.getJobUrl());
 
             if (existingOpt.isPresent()) {
-
                 JobPosting existing = existingOpt.get();
                 existing.setLastSeenAt(job.getLastSeenAt());
                 existing.setActive(true);
-
             } else {
-
-                // 🔥 14-day filter
+                // 🔥 14-day filter using updatedAt (if available)
                 if (!isRecentJob(job)) continue;
 
                 job.setActive(true);
@@ -134,6 +134,8 @@ public class JobIngestionService {
     }
 
     private boolean isTechnicalTitle(String title) {
+        if (StringUtils.isBlank(title)) return false;
+
         String t = title.toLowerCase();
         return t.contains("engineer")
                 || t.contains("developer")
