@@ -28,3 +28,6 @@ spring:
 
 ddl-auto: none
 
+jobradar:
+  scoring:
+    threshold: 0.4
