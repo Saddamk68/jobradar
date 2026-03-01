@@ -1,5 +1,7 @@
 package org.jobradar.service;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -12,6 +14,7 @@ import org.jobradar.entity.Company;
 import org.jobradar.entity.CompanyAts;
 import org.jobradar.entity.JobAnalysis;
 import org.jobradar.entity.JobPosting;
+import org.jobradar.metrics.JobRadarMetrics;
 import org.jobradar.repository.JobAnalysisRepository;
 import org.jobradar.repository.JobPostingRepository;
 import org.springframework.stereotype.Service;
@@ -34,6 +37,8 @@ public class CompanyIngestionService {
     private final JobAnalysisRepository jobAnalysisRepository;
     private final CrawlerFactory crawlerFactory;
     private final PythonClient pythonClient;
+    private final JobRadarMetrics metrics;
+    private final MeterRegistry meterRegistry;
 
     private final JobRadarProperties jobRadarProperties;
 
@@ -42,7 +47,7 @@ public class CompanyIngestionService {
         Company company = mapping.getCompany();
         log.info("Starting ingestion for company: {}", company.getName());
 
-        long startTime = System.currentTimeMillis();
+        Timer.Sample sample = Timer.start(meterRegistry);
         int newJobsCount = 0;
         int analyzedCount = 0;  // jobs sent to Python
         int savedCount = 0;     // jobs above threshold
@@ -56,13 +61,22 @@ public class CompanyIngestionService {
                 mapping.getAtsPlatform()
         );
         int totalCrawled = crawledJobs.size();
+        metrics.incrementCrawled(totalCrawled);
 
         Set<String> crawledUrls = new HashSet<>();
-        List<JobPosting> existingJobs = jobPostingRepository.findAllByCompany(company);
-
         Map<String, JobPosting> existingJobMap = new HashMap<>();
-        for (JobPosting existing : existingJobs) {
-            existingJobMap.put(existing.getJobUrl(), existing);
+
+        if (!crawledJobs.isEmpty()) {
+            List<String> crawledUrlList = crawledJobs.stream()
+                    .map(JobPosting::getJobUrl)
+                    .toList();
+
+            List<JobPosting> existingJobs =
+                    jobPostingRepository.findByCompanyAndJobUrlIn(company, crawledUrlList);
+
+            for (JobPosting existing : existingJobs) {
+                existingJobMap.put(existing.getJobUrl(), existing);
+            }
         }
 
         // 🔥 Collect new jobs for batch Python analysis
@@ -135,6 +149,8 @@ public class CompanyIngestionService {
                 jobAnalysisRepository.saveAll(analysesToSave);
             }
         }
+        metrics.incrementAnalyzed(analyzedCount);
+        metrics.incrementSaved(savedCount);
 
         // 🔥 Mark stale jobs inactive
         List<JobPosting> existingActive =
@@ -146,7 +162,7 @@ public class CompanyIngestionService {
             }
         }
 
-        long duration = System.currentTimeMillis() - startTime;
+        sample.stop(metrics.getIngestionTimer());
         log.info("""
                         Company ingestion completed.
                         Company: {}
@@ -154,14 +170,12 @@ public class CompanyIngestionService {
                         New Jobs: {}
                         Analysed: {}
                         Saved (above threshold): {}
-                        Duration: {} ms
                         """,
                 company.getName(),
                 totalCrawled,
                 newJobsCount,
                 analyzedCount,
-                savedCount,
-                duration
+                savedCount
         );
     }
 

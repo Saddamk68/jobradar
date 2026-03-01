@@ -25,6 +25,8 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
             """)
     List<JobPosting> findAllByCompany(@Param("company") Company company);
 
+    List<JobPosting> findByCompanyAndJobUrlIn(Company company, List<String> jobUrls);
+
     List<JobPosting> findByCompanyAndActiveTrue(Company company);
 
     List<JobPosting> findByActiveTrueAndFirstSeenAtAfter(LocalDateTime dateTime);

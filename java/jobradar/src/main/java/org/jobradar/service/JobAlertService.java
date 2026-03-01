@@ -41,8 +41,7 @@ public class JobAlertService {
 
         for (JobPosting job : recentJobs) {
 
-            Optional<JobAnalysis> analysis =
-                    jobAnalysisRepository.findByJob(job);
+            Optional<JobAnalysis> analysis = jobAnalysisRepository.findByJob(job);
 
             if (analysis.isEmpty()) continue;
 
