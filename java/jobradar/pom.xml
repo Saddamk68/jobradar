@@ -16,6 +16,7 @@
 
         <openapi.version>2.3.0</openapi.version>
         <jsoup.version>1.22.1</jsoup.version>
+        <httpclient5.version>5.2.1</httpclient5.version>
     </properties>
 
     <dependencyManagement>
@@ -75,6 +76,12 @@
             <artifactId>jsoup</artifactId>
             <version>${jsoup.version}</version>
             <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>${httpclient5.version}</version>
         </dependency>
 
     </dependencies>

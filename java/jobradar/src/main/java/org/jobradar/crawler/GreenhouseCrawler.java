@@ -2,6 +2,7 @@ package org.jobradar.crawler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.jobradar.entity.AtsPlatform;
 import org.jobradar.entity.Company;
 import org.jobradar.entity.JobPosting;
@@ -15,9 +16,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 public class GreenhouseCrawler implements AtsCrawler {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
