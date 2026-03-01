@@ -92,6 +92,7 @@ public class CompanyIngestionService {
             List<PythonAnalyzeResponse> analyses =
                     pythonClient.batchAnalyze(jobsToAnalyze);
 
+            List<JobAnalysis> analysesToSave = new ArrayList<>();
             for (int i = 0; i < jobsToAnalyze.size(); i++) {
 
                 JobPosting job = jobsToAnalyze.get(i);
@@ -119,8 +120,11 @@ public class CompanyIngestionService {
                             .analyzedAt(LocalDateTime.now())
                             .build();
 
-                    jobAnalysisRepository.save(jobAnalysis);
+                    analysesToSave.add(jobAnalysis);
                 }
+            }
+            if (!analysesToSave.isEmpty()) {
+                jobAnalysisRepository.saveAll(analysesToSave);
             }
         }
 
