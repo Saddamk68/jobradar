@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jobradar.client.PythonClient;
 import org.jobradar.client.dto.PythonAnalyzeResponse;
+import org.jobradar.config.JobRadarProperties;
 import org.jobradar.crawler.AtsCrawler;
 import org.jobradar.crawler.CrawlerFactory;
 import org.jobradar.entity.Company;
@@ -34,11 +35,17 @@ public class CompanyIngestionService {
     private final CrawlerFactory crawlerFactory;
     private final PythonClient pythonClient;
 
+    private final JobRadarProperties jobRadarProperties;
+
     @Transactional
     public void ingestCompany(CompanyAts mapping) {
-
         Company company = mapping.getCompany();
         log.info("Starting ingestion for company: {}", company.getName());
+
+        long startTime = System.currentTimeMillis();
+        int newJobsCount = 0;
+        int analyzedCount = 0;
+        int savedCount = 0;
 
         AtsCrawler crawler = crawlerFactory.getCrawler(
                 mapping.getAtsPlatform().getName());
@@ -48,11 +55,11 @@ public class CompanyIngestionService {
                 company,
                 mapping.getAtsPlatform()
         );
+        int totalCrawled = crawledJobs.size();
 
         Set<String> crawledUrls = new HashSet<>();
-
-        List<JobPosting> existingJobs =
-                jobPostingRepository.findAllByCompany(company);
+        List<JobPosting> existingJobs = jobPostingRepository.findAllByCompany(company);
+        newJobsCount++;
 
         Map<String, JobPosting> existingJobMap = new HashMap<>();
         for (JobPosting existing : existingJobs) {
@@ -93,38 +100,47 @@ public class CompanyIngestionService {
                     pythonClient.batchAnalyze(jobsToAnalyze);
 
             List<JobAnalysis> analysesToSave = new ArrayList<>();
-            for (int i = 0; i < jobsToAnalyze.size(); i++) {
 
-                JobPosting job = jobsToAnalyze.get(i);
+            for (int i = 0; i < jobsToAnalyze.size(); i++) {
 
                 if (i >= analyses.size()) break;
 
+                JobPosting job = jobsToAnalyze.get(i);
                 PythonAnalyzeResponse analysis = analyses.get(i);
 
-                if (analysis != null && analysis.getMatchScore() != null) {
-
-                    JobAnalysis jobAnalysis = JobAnalysis.builder()
-                            .job(job)
-                            .matchScore(analysis.getMatchScore())
-                            .extractedSkills(
-                                    analysis.getExtractedSkills() != null
-                                            ? String.join(",", analysis.getExtractedSkills())
-                                            : null
-                            )
-                            .experienceRange(
-                                    analysis.getExperienceDetected() != null
-                                            ? analysis.getExperienceDetected().toString()
-                                            : null
-                            )
-                            .signals(analysis.getRoleType())
-                            .analyzedAt(LocalDateTime.now())
-                            .build();
-
-                    analysesToSave.add(jobAnalysis);
+                if (analysis == null || analysis.getMatchScore() == null) {
+                    continue;
                 }
+
+                // 🔥 IMPORTANT: Filter low scores
+                if (analysis.getMatchScore() < jobRadarProperties.getThreshold()) {
+                    continue;
+                }
+
+                JobAnalysis jobAnalysis = JobAnalysis.builder()
+                        .job(job)
+                        .matchScore(analysis.getMatchScore())
+                        .extractedSkills(
+                                analysis.getExtractedSkills() != null
+                                        ? String.join(",", analysis.getExtractedSkills())
+                                        : null
+                        )
+                        .experienceRange(
+                                analysis.getExperienceDetected() != null
+                                        ? analysis.getExperienceDetected().toString()
+                                        : null
+                        )
+                        .signals(analysis.getRoleType())
+                        .analyzedAt(LocalDateTime.now())
+                        .build();
+
+                analysesToSave.add(jobAnalysis);
+                savedCount++;
             }
+
             if (!analysesToSave.isEmpty()) {
                 jobAnalysisRepository.saveAll(analysesToSave);
+                analyzedCount = analysesToSave.size();
             }
         }
 
@@ -138,7 +154,23 @@ public class CompanyIngestionService {
             }
         }
 
-        log.info("Completed ingestion for company: {}", company.getName());
+        long duration = System.currentTimeMillis() - startTime;
+        log.info("""
+                        Company ingestion completed.
+                        Company: {}
+                        Total Crawled: {}
+                        New Jobs: {}
+                        Analysed: {}
+                        Saved (above threshold): {}
+                        Duration: {} ms
+                        """,
+                company.getName(),
+                totalCrawled,
+                newJobsCount,
+                analyzedCount,
+                savedCount,
+                duration
+        );
     }
 
     private boolean isTechnicalTitle(String title) {
