@@ -44,8 +44,8 @@ public class CompanyIngestionService {
 
         long startTime = System.currentTimeMillis();
         int newJobsCount = 0;
-        int analyzedCount = 0;
-        int savedCount = 0;
+        int analyzedCount = 0;  // jobs sent to Python
+        int savedCount = 0;     // jobs above threshold
 
         AtsCrawler crawler = crawlerFactory.getCrawler(
                 mapping.getAtsPlatform().getName());
@@ -59,7 +59,6 @@ public class CompanyIngestionService {
 
         Set<String> crawledUrls = new HashSet<>();
         List<JobPosting> existingJobs = jobPostingRepository.findAllByCompany(company);
-        newJobsCount++;
 
         Map<String, JobPosting> existingJobMap = new HashMap<>();
         for (JobPosting existing : existingJobs) {
@@ -70,11 +69,9 @@ public class CompanyIngestionService {
         List<JobPosting> jobsToAnalyze = new ArrayList<>();
 
         for (JobPosting job : crawledJobs) {
-
             crawledUrls.add(job.getJobUrl());
 
             if (!isIndiaLocation(job)) continue;
-
             if (!isTechnicalTitle(job.getJobTitle())) continue;
 
             JobPosting existing = existingJobMap.get(job.getJobUrl());
@@ -83,26 +80,22 @@ public class CompanyIngestionService {
                 existing.setLastSeenAt(job.getLastSeenAt());
                 existing.setActive(true);
             } else {
-
                 if (!isRecentJob(job)) continue;
 
                 job.setActive(true);
                 JobPosting savedJob = jobPostingRepository.save(job);
-
                 jobsToAnalyze.add(savedJob);
+                newJobsCount++;
             }
         }
 
         // 🔥 Batch Python Analysis
         if (!jobsToAnalyze.isEmpty()) {
-
-            List<PythonAnalyzeResponse> analyses =
-                    pythonClient.batchAnalyze(jobsToAnalyze);
+            List<PythonAnalyzeResponse> analyses = pythonClient.batchAnalyze(jobsToAnalyze);
+            analyzedCount = analyses != null ? analyses.size() : 0;
 
             List<JobAnalysis> analysesToSave = new ArrayList<>();
-
             for (int i = 0; i < jobsToAnalyze.size(); i++) {
-
                 if (i >= analyses.size()) break;
 
                 JobPosting job = jobsToAnalyze.get(i);
@@ -140,7 +133,6 @@ public class CompanyIngestionService {
 
             if (!analysesToSave.isEmpty()) {
                 jobAnalysisRepository.saveAll(analysesToSave);
-                analyzedCount = analysesToSave.size();
             }
         }
 
