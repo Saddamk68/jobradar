@@ -123,9 +123,9 @@ public class CompanyIngestionService {
                 }
 
                 // 🔥 IMPORTANT: Filter low scores
-//                if (analysis.getMatchScore() < jobRadarProperties.getThreshold()) {
-//                    continue;
-//                }
+                if (analysis.getMatchScore() < jobRadarProperties.getThreshold()) {
+                    continue;
+                }
 
                 JobAnalysis jobAnalysis = JobAnalysis.builder()
                         .job(job)

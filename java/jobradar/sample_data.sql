@@ -1,6 +1,9 @@
-
 INSERT INTO ats_platform (NAME, base_url_pattern)
-VALUES ('Greenhouse', 'greenhouse.io');
+VALUES
+('Greenhouse', 'greenhouse.io'),
+('SmartRecruiters', 'smartrecruiters.com'),
+('Workday', 'myworkdayjobs.com'),
+('Lever', 'lever.co');
 
 INSERT INTO company (NAME, career_page_url, industry) VALUES
 ('Stripe', 'https://boards.greenhouse.io/stripe', 'FinTech'),
@@ -62,65 +65,144 @@ INSERT INTO company (NAME, career_page_url, industry) VALUES
 ('SAP', 'https://boards.greenhouse.io/sap', 'Enterprise'),
 ('ThoughtSpot', 'https://boards.greenhouse.io/thoughtspot', 'Analytics');
 
-INSERT INTO company_ats (company_id, ats_platform_id, ats_job_url) VALUES
-((SELECT id FROM company WHERE NAME='Stripe'), 1, 'https://boards.greenhouse.io/stripe'),
-((SELECT id FROM company WHERE NAME='Datadog'), 1, 'https://boards.greenhouse.io/datadog'),
-((SELECT id FROM company WHERE NAME='Atlassian'), 1, 'https://boards.greenhouse.io/atlassian'),
-((SELECT id FROM company WHERE NAME='Coinbase'), 1, 'https://boards.greenhouse.io/coinbase'),
-((SELECT id FROM company WHERE NAME='Airbnb'), 1, 'https://boards.greenhouse.io/airbnb'),
-((SELECT id FROM company WHERE NAME='Pinterest'), 1, 'https://boards.greenhouse.io/pinterest'),
-((SELECT id FROM company WHERE NAME='Reddit'), 1, 'https://boards.greenhouse.io/reddit'),
-((SELECT id FROM company WHERE NAME='GitHub'), 1, 'https://boards.greenhouse.io/github'),
-((SELECT id FROM company WHERE NAME='Okta'), 1, 'https://boards.greenhouse.io/okta'),
-((SELECT id FROM company WHERE NAME='Elastic'), 1, 'https://boards.greenhouse.io/elastic'),
+INSERT INTO company_ats (company_id, ats_platform_id, ats_job_url)
+SELECT id, 1, career_page_url
+FROM company
+WHERE career_page_url LIKE '%greenhouse%';
 
-((SELECT id FROM company WHERE NAME='MongoDB'), 1, 'https://boards.greenhouse.io/mongodb'),
-((SELECT id FROM company WHERE NAME='Snowflake'), 1, 'https://boards.greenhouse.io/snowflake'),
-((SELECT id FROM company WHERE NAME='Twilio'), 1, 'https://boards.greenhouse.io/twilio'),
-((SELECT id FROM company WHERE NAME='HashiCorp'), 1, 'https://boards.greenhouse.io/hashicorp'),
-((SELECT id FROM company WHERE NAME='DigitalOcean'), 1, 'https://boards.greenhouse.io/digitalocean'),
+-- for smartrecruiters
+INSERT INTO company (name, career_page_url, industry) VALUES
+('Bosch', 'https://careers.smartrecruiters.com/BoschGroup', 'Manufacturing'),
+('Visa', 'https://careers.smartrecruiters.com/Visa', 'FinTech'),
+('IKEA', 'https://careers.smartrecruiters.com/IKEA', 'Retail'),
+('Pandora', 'https://careers.smartrecruiters.com/Pandora', 'Retail'),
+('Volvo Group', 'https://careers.smartrecruiters.com/VolvoGroup', 'Automotive'),
+('Nokia', 'https://careers.smartrecruiters.com/Nokia', 'Telecom'),
+('Philips', 'https://careers.smartrecruiters.com/Philips', 'Healthcare'),
+('Bosch Global', 'https://careers.smartrecruiters.com/BoschGlobal', 'Manufacturing'),
+('Visa Europe', 'https://careers.smartrecruiters.com/VisaEurope', 'FinTech'),
+('Pandora Jewelry', 'https://careers.smartrecruiters.com/PandoraJewelry', 'Retail'),
 
-((SELECT id FROM company WHERE NAME='Confluent'), 1, 'https://boards.greenhouse.io/confluent'),
-((SELECT id FROM company WHERE NAME='Razorpay'), 1, 'https://boards.greenhouse.io/razorpay'),
-((SELECT id FROM company WHERE NAME='Postman'), 1, 'https://boards.greenhouse.io/postman'),
-((SELECT id FROM company WHERE NAME='BrowserStack'), 1, 'https://boards.greenhouse.io/browserstack'),
-((SELECT id FROM company WHERE NAME='Freshworks'), 1, 'https://boards.greenhouse.io/freshworks'),
+('Publicis Groupe', 'https://careers.smartrecruiters.com/PublicisGroupe', 'Marketing'),
+('Capgemini Engineering', 'https://careers.smartrecruiters.com/CapgeminiEngineering', 'Consulting'),
+('Vestas', 'https://careers.smartrecruiters.com/Vestas', 'Energy'),
+('Bosch Rexroth', 'https://careers.smartrecruiters.com/BoschRexroth', 'Manufacturing'),
+('Adidas Digital', 'https://careers.smartrecruiters.com/AdidasDigital', 'Retail'),
 
-((SELECT id FROM company WHERE NAME='Chargebee'), 1, 'https://boards.greenhouse.io/chargebee'),
-((SELECT id FROM company WHERE NAME='Zoho'), 1, 'https://boards.greenhouse.io/zoho'),
-((SELECT id FROM company WHERE NAME='Paytm'), 1, 'https://boards.greenhouse.io/paytm'),
-((SELECT id FROM company WHERE NAME='PhonePe'), 1, 'https://boards.greenhouse.io/phonepe'),
-((SELECT id FROM company WHERE NAME='Swiggy'), 1, 'https://boards.greenhouse.io/swiggy'),
+('LVMH', 'https://careers.smartrecruiters.com/LVMH', 'Luxury'),
+('Hilti', 'https://careers.smartrecruiters.com/Hilti', 'Construction'),
+('Takeda', 'https://careers.smartrecruiters.com/Takeda', 'Pharma'),
+('Leroy Merlin', 'https://careers.smartrecruiters.com/LeroyMerlin', 'Retail'),
+('Swarovski', 'https://careers.smartrecruiters.com/Swarovski', 'Retail'),
 
-((SELECT id FROM company WHERE NAME='Zomato'), 1, 'https://boards.greenhouse.io/zomato'),
-((SELECT id FROM company WHERE NAME='Meesho'), 1, 'https://boards.greenhouse.io/meesho'),
-((SELECT id FROM company WHERE NAME='Flipkart'), 1, 'https://boards.greenhouse.io/flipkart'),
-((SELECT id FROM company WHERE NAME='Ola'), 1, 'https://boards.greenhouse.io/olacabs'),
-((SELECT id FROM company WHERE NAME='CRED'), 1, 'https://boards.greenhouse.io/cred'),
+('Bosch Automotive', 'https://careers.smartrecruiters.com/BoschAutomotive', 'Automotive'),
+('Axa', 'https://careers.smartrecruiters.com/Axa', 'Insurance'),
+('Total Energies', 'https://careers.smartrecruiters.com/TotalEnergies', 'Energy'),
+('Veolia', 'https://careers.smartrecruiters.com/Veolia', 'Utilities'),
+('Danone', 'https://careers.smartrecruiters.com/Danone', 'Food'),
 
-((SELECT id FROM company WHERE NAME='Groww'), 1, 'https://boards.greenhouse.io/groww'),
-((SELECT id FROM company WHERE NAME='Upstox'), 1, 'https://boards.greenhouse.io/upstox'),
-((SELECT id FROM company WHERE NAME='Dream11'), 1, 'https://boards.greenhouse.io/dream11'),
-((SELECT id FROM company WHERE NAME='ShareChat'), 1, 'https://boards.greenhouse.io/sharechat'),
-((SELECT id FROM company WHERE NAME='InMobi'), 1, 'https://boards.greenhouse.io/inmobi'),
+('Schneider Electric', 'https://careers.smartrecruiters.com/SchneiderElectric', 'Energy'),
+('Air Liquide', 'https://careers.smartrecruiters.com/AirLiquide', 'Energy'),
+('Siemens Mobility', 'https://careers.smartrecruiters.com/SiemensMobility', 'Transport'),
+('Bosch Security', 'https://careers.smartrecruiters.com/BoschSecurity', 'Security'),
+('Bosch Software', 'https://careers.smartrecruiters.com/BoschSoftware', 'Software'),
 
-((SELECT id FROM company WHERE NAME='Rippling'), 1, 'https://boards.greenhouse.io/rippling'),
-((SELECT id FROM company WHERE NAME='Deel'), 1, 'https://boards.greenhouse.io/deel'),
-((SELECT id FROM company WHERE NAME='HubSpot'), 1, 'https://boards.greenhouse.io/hubspot'),
-((SELECT id FROM company WHERE NAME='Notion'), 1, 'https://boards.greenhouse.io/notion'),
-((SELECT id FROM company WHERE NAME='Cloudflare'), 1, 'https://boards.greenhouse.io/cloudflare'),
+('BNP Paribas', 'https://careers.smartrecruiters.com/BNPParibas', 'Banking'),
+('Sodexo', 'https://careers.smartrecruiters.com/Sodexo', 'Hospitality'),
+('Dassault Systemes', 'https://careers.smartrecruiters.com/DassaultSystemes', 'Software'),
+('Carrefour', 'https://careers.smartrecruiters.com/Carrefour', 'Retail'),
+('Orange', 'https://careers.smartrecruiters.com/Orange', 'Telecom'),
 
-((SELECT id FROM company WHERE NAME='Adobe'), 1, 'https://boards.greenhouse.io/adobe'),
-((SELECT id FROM company WHERE NAME='Salesforce'), 1, 'https://boards.greenhouse.io/salesforce'),
-((SELECT id FROM company WHERE NAME='VMware'), 1, 'https://boards.greenhouse.io/vmware'),
-((SELECT id FROM company WHERE NAME='ServiceNow'), 1, 'https://boards.greenhouse.io/servicenow'),
-((SELECT id FROM company WHERE NAME='Nutanix'), 1, 'https://boards.greenhouse.io/nutanix'),
+('Allianz', 'https://careers.smartrecruiters.com/Allianz', 'Insurance'),
+('Thales', 'https://careers.smartrecruiters.com/Thales', 'Defense'),
+('Alstom', 'https://careers.smartrecruiters.com/Alstom', 'Transport'),
+('Capgemini', 'https://careers.smartrecruiters.com/Capgemini', 'Consulting'),
+('Accor', 'https://careers.smartrecruiters.com/Accor', 'Hospitality'),
 
-((SELECT id FROM company WHERE NAME='UiPath'), 1, 'https://boards.greenhouse.io/uipath'),
-((SELECT id FROM company WHERE NAME='NVIDIA'), 1, 'https://boards.greenhouse.io/nvidia'),
-((SELECT id FROM company WHERE NAME='Palantir'), 1, 'https://boards.greenhouse.io/palantir'),
-((SELECT id FROM company WHERE NAME='SAP'), 1, 'https://boards.greenhouse.io/sap'),
-((SELECT id FROM company WHERE NAME='ThoughtSpot'), 1, 'https://boards.greenhouse.io/thoughtspot');
+('Sanofi', 'https://careers.smartrecruiters.com/Sanofi', 'Pharma'),
+('Renault', 'https://careers.smartrecruiters.com/Renault', 'Automotive'),
+('Peugeot', 'https://careers.smartrecruiters.com/Peugeot', 'Automotive'),
+('Citroen', 'https://careers.smartrecruiters.com/Citroen', 'Automotive'),
+('Valeo', 'https://careers.smartrecruiters.com/Valeo', 'Automotive'),
+
+('Michelin', 'https://careers.smartrecruiters.com/Michelin', 'Automotive'),
+('EDF Energy', 'https://careers.smartrecruiters.com/EDF', 'Energy'),
+('Engie', 'https://careers.smartrecruiters.com/Engie', 'Energy'),
+('Heineken', 'https://careers.smartrecruiters.com/Heineken', 'Beverages'),
+('Carlsberg', 'https://careers.smartrecruiters.com/Carlsberg', 'Beverages');
+
+INSERT INTO company_ats (company_id, ats_platform_id, ats_job_url)
+SELECT id, 2, career_page_url
+FROM company
+WHERE career_page_url LIKE '%smartrecruiters%';
+
+-- for workday
+INSERT INTO company (name, career_page_url, industry) VALUES
+('Amazon', 'https://amazon.jobs', 'Ecommerce'),
+('Walmart', 'https://careers.walmart.com', 'Retail'),
+('Target', 'https://careers.target.com', 'Retail'),
+('Netflix', 'https://jobs.netflix.com', 'Streaming'),
+('Tesla', 'https://www.tesla.com/careers', 'Automotive'),
+
+('Apple', 'https://jobs.apple.com', 'Technology'),
+('Nike', 'https://jobs.nike.com', 'Retail'),
+('Dell', 'https://jobs.dell.com', 'Technology'),
+('PayPal', 'https://paypalcareers.com', 'FinTech'),
+('Intel', 'https://jobs.intel.com', 'Semiconductors'),
+
+('HP', 'https://jobs.hp.com', 'Technology'),
+('Cisco', 'https://jobs.cisco.com', 'Networking'),
+('Oracle', 'https://careers.oracle.com', 'Database'),
+('IBM', 'https://careers.ibm.com', 'Technology'),
+('Google', 'https://careers.google.com', 'Technology'),
+
+('Microsoft', 'https://careers.microsoft.com', 'Technology'),
+('Meta', 'https://careers.meta.com', 'Technology'),
+('Adobe', 'https://careers.adobe.com', 'Software'),
+('Salesforce', 'https://careers.salesforce.com', 'CRM'),
+('SAP', 'https://jobs.sap.com', 'Enterprise'),
+
+('Accenture', 'https://careers.accenture.com', 'Consulting'),
+('Deloitte', 'https://careers.deloitte.com', 'Consulting'),
+('PwC', 'https://careers.pwc.com', 'Consulting'),
+('KPMG', 'https://careers.kpmg.com', 'Consulting'),
+('EY', 'https://careers.ey.com', 'Consulting'),
+
+('Goldman Sachs', 'https://careers.goldmansachs.com', 'Banking'),
+('JPMorgan', 'https://careers.jpmorgan.com', 'Banking'),
+('Morgan Stanley', 'https://careers.morganstanley.com', 'Banking'),
+('American Express', 'https://careers.americanexpress.com', 'Finance'),
+('Mastercard', 'https://careers.mastercard.com', 'FinTech'),
+
+('Uber', 'https://www.uber.com/careers', 'Mobility'),
+('Lyft', 'https://www.lyft.com/careers', 'Mobility'),
+('Airbnb', 'https://careers.airbnb.com', 'Marketplace'),
+('Booking.com', 'https://careers.booking.com', 'Travel'),
+('Expedia', 'https://careers.expediagroup.com', 'Travel'),
+
+('Spotify', 'https://www.lifeatspotify.com/jobs', 'Streaming'),
+('Snap', 'https://careers.snap.com', 'Social'),
+('TikTok', 'https://careers.tiktok.com', 'Social'),
+('LinkedIn', 'https://careers.linkedin.com', 'Social'),
+('Twitter', 'https://careers.twitter.com', 'Social'),
+
+('eBay', 'https://careers.ebayinc.com', 'Ecommerce'),
+('Shopify', 'https://www.shopify.com/careers', 'Ecommerce'),
+('Stripe', 'https://stripe.com/jobs', 'FinTech'),
+('Square', 'https://careers.squareup.com', 'FinTech'),
+('Robinhood', 'https://careers.robinhood.com', 'FinTech'),
+
+('Zoom', 'https://careers.zoom.us', 'Communication'),
+('Slack', 'https://slack.com/careers', 'Communication'),
+('Dropbox', 'https://jobs.dropbox.com', 'Cloud'),
+('Snowflake', 'https://careers.snowflake.com', 'Data'),
+('Databricks', 'https://www.databricks.com/company/careers', 'Data');
+
+INSERT INTO company_ats (company_id, ats_platform_id, ats_job_url)
+SELECT id, 3, career_page_url
+FROM company
+WHERE career_page_url NOT LIKE '%greenhouse%'
+AND career_page_url NOT LIKE '%smartrecruiters%';
 
 INSERT INTO target_skill (skill_name, weight)
 VALUES
