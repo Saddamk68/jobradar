@@ -79,7 +79,8 @@ public class GreenhouseCrawler implements AtsCrawler {
                         .jobTitle(title)
                         .jobUrl(jobUrl)
                         .jobDescription(description)
-                        .postedDate(LocalDate.now())
+                        .postedDate(updatedAt != null ? updatedAt.toLocalDate() : LocalDate.now())
+                        .firstSeenAt(LocalDateTime.now())
                         .lastSeenAt(updatedAt != null ? updatedAt.toLocalDateTime() : LocalDateTime.now())
                         .build();
 

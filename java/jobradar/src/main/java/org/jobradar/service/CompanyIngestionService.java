@@ -20,6 +20,7 @@ import org.jobradar.repository.JobPostingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,8 +72,7 @@ public class CompanyIngestionService {
                     .map(JobPosting::getJobUrl)
                     .toList();
 
-            List<JobPosting> existingJobs =
-                    jobPostingRepository.findByCompanyAndJobUrlIn(company, crawledUrlList);
+            List<JobPosting> existingJobs = jobPostingRepository.findByCompanyAndJobUrlIn(company, crawledUrlList);
 
             for (JobPosting existing : existingJobs) {
                 existingJobMap.put(existing.getJobUrl(), existing);
@@ -123,9 +123,9 @@ public class CompanyIngestionService {
                 }
 
                 // 🔥 IMPORTANT: Filter low scores
-                if (analysis.getMatchScore() < jobRadarProperties.getThreshold()) {
-                    continue;
-                }
+//                if (analysis.getMatchScore() < jobRadarProperties.getThreshold()) {
+//                    continue;
+//                }
 
                 JobAnalysis jobAnalysis = JobAnalysis.builder()
                         .job(job)
@@ -225,11 +225,24 @@ public class CompanyIngestionService {
         }
     }
 
+    // ✅ NEW — uses postedDate, with safe fallback
     private boolean isRecentJob(JobPosting job) {
-        if (job.getLastSeenAt() == null) return false;
+        // Primary check: use postedDate if available
+        if (job.getPostedDate() != null) {
+            return job.getPostedDate().isAfter(
+                    LocalDate.now().minusDays(14)
+            );
+        }
 
-        LocalDateTime fourteenDaysAgo = LocalDateTime.now().minusDays(14);
-        return job.getLastSeenAt().isAfter(fourteenDaysAgo);
+        // Fallback: use lastSeenAt if postedDate is missing
+        if (job.getLastSeenAt() != null) {
+            return job.getLastSeenAt().isAfter(
+                    LocalDateTime.now().minusDays(14)
+            );
+        }
+
+        // If neither field is set, allow the job through rather than silently dropping it
+        return true;
     }
 
 }
