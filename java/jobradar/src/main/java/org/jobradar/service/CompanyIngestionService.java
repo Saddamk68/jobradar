@@ -79,7 +79,7 @@ public class CompanyIngestionService {
             }
         }
 
-        // 🔥 Collect new jobs for batch Python analysis
+        // Collect new jobs for batch Python analysis
         List<JobPosting> jobsToAnalyze = new ArrayList<>();
 
         for (JobPosting job : crawledJobs) {
@@ -106,7 +106,7 @@ public class CompanyIngestionService {
             }
         }
 
-        // 🔥 Batch Python Analysis
+        // Batch Python Analysis
         if (!jobsToAnalyze.isEmpty()) {
             List<PythonAnalyzeResponse> analyses = pythonClient.batchAnalyze(jobsToAnalyze);
             analyzedCount = analyses != null ? analyses.size() : 0;
@@ -122,7 +122,7 @@ public class CompanyIngestionService {
                     continue;
                 }
 
-                // 🔥 IMPORTANT: Filter low scores
+                // IMPORTANT: Filter low scores
                 if (analysis.getMatchScore() < jobRadarProperties.getThreshold()) {
                     continue;
                 }
@@ -155,7 +155,7 @@ public class CompanyIngestionService {
         metrics.incrementAnalyzed(analyzedCount);
         metrics.incrementSaved(savedCount);
 
-        // 🔥 Mark stale jobs inactive
+        // Mark stale jobs inactive
         List<JobPosting> existingActive =
                 jobPostingRepository.findByCompanyAndActiveTrue(company);
 
@@ -196,8 +196,8 @@ public class CompanyIngestionService {
     private boolean isIndiaLocation(JobPosting job) {
         if (!StringUtils.isBlank(job.getLocation())) {
             String location = job.getLocation().toLowerCase();
-            return location.contains("india")
-                    || location.contains("remote")
+            return location.contains("remote")
+                    || location.contains("india")
                     || location.contains("bangalore")
                     || location.contains("bengaluru")
                     || location.contains("hyderabad")
@@ -211,8 +211,8 @@ public class CompanyIngestionService {
             if (job.getJobDescription() == null) return false;
 
             String text = job.getJobDescription().toLowerCase();
-            return text.contains("india")
-                    || text.contains("remote")
+            return text.contains("remote")
+                    || text.contains("india")
                     || text.contains("bangalore")
                     || text.contains("bengaluru")
                     || text.contains("hyderabad")
@@ -225,7 +225,7 @@ public class CompanyIngestionService {
         }
     }
 
-    // ✅ NEW — uses postedDate, with safe fallback
+    // NEW — uses postedDate, with safe fallback
     private boolean isRecentJob(JobPosting job) {
         // Primary check: use postedDate if available
         if (job.getPostedDate() != null) {

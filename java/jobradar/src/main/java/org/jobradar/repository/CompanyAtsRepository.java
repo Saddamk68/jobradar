@@ -1,5 +1,7 @@
 package org.jobradar.repository;
 
+import org.jobradar.entity.AtsPlatform;
+import org.jobradar.entity.Company;
 import org.jobradar.entity.CompanyAts;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,5 +22,7 @@ public interface CompanyAtsRepository extends JpaRepository<CompanyAts, Long> {
                 WHERE ca.active = true
             """)
     List<CompanyAts> findActiveWithAssociations();
+
+    boolean existsByCompanyAndAtsPlatform(Company company, AtsPlatform atsPlatform);
 
 }
