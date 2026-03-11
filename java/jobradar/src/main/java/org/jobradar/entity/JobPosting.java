@@ -54,10 +54,10 @@ public class JobPosting {
 
     private LocalDate postedDate;
 
-    @Column(name = "first_seen_at", insertable = false)
+    @Column(name = "first_seen_at")
     private LocalDateTime firstSeenAt;
 
-    @Column(name = "last_seen_at", insertable = false)
+    @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
 
     private Boolean active;

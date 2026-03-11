@@ -26,5 +26,15 @@ spring:
         format_sql: true
     open-in-view: false
 
-ddl-auto: none
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health,info
+  endpoint:
+    prometheus:
+      enabled: true
 
+jobradar:
+  scoring:
+    threshold: 0.4

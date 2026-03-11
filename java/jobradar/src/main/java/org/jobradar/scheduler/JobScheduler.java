@@ -16,8 +16,7 @@ public class JobScheduler {
     private final JobAlertService jobAlertService;
 
     // Runs once every 24 hours
-//    @Scheduled(cron = "0 0 2 * * ?")
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(cron = "0 0 2 * * ?")
     public void runDailyJobCrawl() {
 
         log.info("Starting scheduled job crawl...");

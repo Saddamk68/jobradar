@@ -4,13 +4,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jobradar.client.dto.PythonAnalyzeRequest;
 import org.jobradar.client.dto.PythonAnalyzeResponse;
+import org.jobradar.entity.JobPosting;
 import org.jobradar.entity.TargetSkill;
 import org.jobradar.repository.TargetSkillRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 @RequiredArgsConstructor
@@ -18,12 +25,26 @@ import java.util.List;
 public class PythonClient {
 
     private final TargetSkillRepository targetSkillRepository;
+    private final RestTemplate restTemplate;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private static final String PYTHON_BASE_URL = "http://127.0.0.1:8000";
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 1000;
 
-    private static final String PYTHON_URL = "http://127.0.0.1:8000/analyze";
+    // Circuit breaker config
+    private static final int FAILURE_THRESHOLD = 5;
+    private static final long CIRCUIT_OPEN_DURATION_MS = 60_000;
+
+    // Circuit state
+    private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
+    private volatile long circuitOpenedAt = 0;
 
     public PythonAnalyzeResponse analyze(String jobDescription, int experienceYears) {
+        if (isCircuitOpen()) {
+            log.warn("Python circuit breaker is OPEN. Skipping analyze call.");
+            return null;
+        }
+
         List<String> skills = targetSkillRepository.findByActiveTrue()
                 .stream()
                 .map(TargetSkill::getSkillName)
@@ -35,21 +56,116 @@ public class PythonClient {
                 .experienceYears(experienceYears)
                 .build();
 
-        try {
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                ResponseEntity<PythonAnalyzeResponse> response =
+                        restTemplate.postForEntity(
+                                PYTHON_BASE_URL + "/analyze",
+                                request,
+                                PythonAnalyzeResponse.class
+                        );
+                recordSuccess();
+                return response.getBody();
 
-            ResponseEntity<PythonAnalyzeResponse> response =
-                    restTemplate.postForEntity(
-                            PYTHON_URL,
-                            request,
-                            PythonAnalyzeResponse.class
-                    );
+            } catch (Exception e) {
+                log.warn("Python analyze attempt {} failed", attempt, e);
+                recordFailure();
 
-            return response.getBody();
-
-        } catch (Exception e) {
-            log.error("Error calling Python service", e);
-            return null;
+                if (attempt == MAX_RETRIES) {
+                    log.error("Python analyze failed after {} attempts", MAX_RETRIES);
+                    return null;
+                }
+                sleep();
+            }
         }
+        return null;
+    }
+
+    public List<PythonAnalyzeResponse> batchAnalyze(List<JobPosting> jobs) {
+        if (isCircuitOpen()) {
+            log.warn("Python circuit breaker is OPEN. Skipping batch analyze.");
+            return Collections.emptyList();
+        }
+
+        List<Map<String, Object>> requestBody = new ArrayList<>();
+        List<String> skills = targetSkillRepository.findByActiveTrue()
+                .stream()
+                .map(TargetSkill::getSkillName)
+                .toList();
+
+        for (JobPosting job : jobs) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("jobDescription", job.getJobDescription());
+            map.put("targetSkills", skills);
+            map.put("experienceYears", 5);
+            requestBody.add(map);
+        }
+
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                ResponseEntity<PythonAnalyzeResponse[]> response =
+                        restTemplate.postForEntity(
+                                PYTHON_BASE_URL + "/analyze/batch",
+                                requestBody,
+                                PythonAnalyzeResponse[].class
+                        );
+                recordSuccess();
+                PythonAnalyzeResponse[] body = response.getBody();
+                if (body == null) {
+                    return Collections.emptyList();
+                }
+                return Arrays.asList(body);
+
+            } catch (Exception e) {
+                log.warn("Python batch analyze attempt {} failed", attempt, e);
+                recordFailure();
+
+                if (attempt == MAX_RETRIES) {
+                    log.error("Python batch analyze failed after {} attempts", MAX_RETRIES);
+                    return Collections.emptyList();
+                }
+                sleep();
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private void sleep() {
+        try {
+            Thread.sleep(RETRY_DELAY_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private boolean isCircuitOpen() {
+        if (consecutiveFailures.get() < FAILURE_THRESHOLD) {
+            return false;
+        }
+
+        long now = System.currentTimeMillis();
+
+        if (now - circuitOpenedAt > CIRCUIT_OPEN_DURATION_MS) {
+            // Reset circuit after cooldown
+            log.info("Circuit breaker resetting. Allowing Python calls again.");
+            consecutiveFailures.set(0);
+            return false;
+        }
+
+        return true;
+    }
+
+    private void recordFailure() {
+        int failures = consecutiveFailures.incrementAndGet();
+
+        if (failures == FAILURE_THRESHOLD) {
+            circuitOpenedAt = System.currentTimeMillis();
+            log.error("Circuit breaker OPENED after {} consecutive failures", FAILURE_THRESHOLD);
+        }
+    }
+
+    private void recordSuccess() {
+        consecutiveFailures.set(0);
     }
 
 }

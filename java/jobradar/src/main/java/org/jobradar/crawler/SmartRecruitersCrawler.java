@@ -22,9 +22,9 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class GreenhouseCrawler implements AtsCrawler {
+public class SmartRecruitersCrawler implements AtsCrawler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GreenhouseCrawler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SmartRecruitersCrawler.class);
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -35,41 +35,29 @@ public class GreenhouseCrawler implements AtsCrawler {
 
         String apiUrl = null;
         try {
-            // normalize URL and trim trailing slash, then extract board name
-            String normalizedUrl = atsJobUrl == null ? "" : atsJobUrl;
-            if (normalizedUrl.endsWith("/")) {
-                normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length() - 1);
-            }
-            // Extract board name from URL
-            String boardName = normalizedUrl.substring(normalizedUrl.lastIndexOf("/") + 1);
+            // Extract company identifier from URL
+            String companyIdentifier = atsJobUrl.substring(atsJobUrl.lastIndexOf("/") + 1);
 
-            apiUrl = "https://boards-api.greenhouse.io/v1/boards/"
-                    + boardName
-                    + "/jobs?content=true";
+            apiUrl = "https://api.smartrecruiters.com/v1/companies/"
+                    + companyIdentifier
+                    + "/postings";
 
             String response = restTemplate.getForObject(apiUrl, String.class);
 
             JsonNode root = objectMapper.readTree(response);
-            JsonNode jobsArray = root.get("jobs");
+            JsonNode postings = root.get("content");
 
-            if (jobsArray == null || !jobsArray.isArray()) {
+            if (postings == null || !postings.isArray()) {
                 return jobs;
             }
 
-            for (JsonNode jobNode : jobsArray) {
+            for (JsonNode jobNode : postings) {
+                String title = jobNode.get("name").asText();
+                String jobUrl = jobNode.get("ref").asText();
+                String location = jobNode.get("location").get("city").asText("");
 
-                String title = jobNode.get("title").asText();
-                String jobUrl = jobNode.get("absolute_url").asText();
-                JsonNode locationNode = jobNode.get("location");
-                String location = locationNode != null && locationNode.has("name")
-                        ? locationNode.get("name").asText()
-                        : "";
-                String description = jobNode.has("content")
-                        ? jobNode.get("content").asText()
-                        : "";
-
-                String updatedAtRaw = jobNode.has("updated_at")
-                        ? jobNode.get("updated_at").asText()
+                String updatedAtRaw = jobNode.has("releasedDate")
+                        ? jobNode.get("releasedDate").asText()
                         : null;
 
                 OffsetDateTime updatedAt = null;
@@ -79,12 +67,12 @@ public class GreenhouseCrawler implements AtsCrawler {
 
                 JobPosting job = JobPosting.builder()
                         .active(true)
+                        .jobTitle(title)
+                        .jobUrl(jobUrl)
                         .location(location)
                         .company(company)
                         .atsPlatform(platform)
-                        .jobTitle(title)
-                        .jobUrl(jobUrl)
-                        .jobDescription(description)
+                        .jobDescription("") // SmartRecruiters requires another call for full description
                         .postedDate(updatedAt != null ? updatedAt.toLocalDate() : LocalDate.now())
                         .firstSeenAt(LocalDateTime.now())
                         .lastSeenAt(updatedAt != null ? updatedAt.toLocalDateTime() : LocalDateTime.now())
@@ -94,19 +82,20 @@ public class GreenhouseCrawler implements AtsCrawler {
             }
 
         } catch (HttpClientErrorException.NotFound e) {
-            LOGGER.warn("Greenhouse board not found (404): {} -> {}", apiUrl, e.getMessage());
+            LOGGER.warn("SmartRecruiters company not found (404): {} -> {}", apiUrl, e.getMessage());
         } catch (HttpClientErrorException.BadRequest e) {
-            LOGGER.warn("Bad request to Greenhouse API (400): {} -> {}", apiUrl, e.getMessage());
+            LOGGER.warn("Bad request to SmartRecruiters API (400): {} -> {}", apiUrl, e.getMessage());
         } catch (HttpClientErrorException e) {
-            LOGGER.warn("Client error calling Greenhouse API {}: {} -> {}", apiUrl, e.getStatusCode(), e.getResponseBodyAsString());
+            LOGGER.warn("Client error calling SmartRecruiters API {}: {} -> {}", apiUrl, e.getStatusCode(), e.getResponseBodyAsString());
         } catch (HttpServerErrorException e) {
-            LOGGER.warn("Server error calling Greenhouse API {}: {} -> {}", apiUrl, e.getStatusCode(), e.getResponseBodyAsString());
+            LOGGER.warn("Server error calling SmartRecruiters API {}: {} -> {}", apiUrl, e.getStatusCode(), e.getResponseBodyAsString());
         } catch (ResourceAccessException e) {
-            LOGGER.warn("I/O error calling Greenhouse API {}: {}", apiUrl, e.getMessage());
+            LOGGER.warn("I/O error calling SmartRecruiters API {}: {}", apiUrl, e.getMessage());
         } catch (Exception e) {
-            LOGGER.error("Unexpected error crawling Greenhouse {}: {}", apiUrl, e.getMessage(), e);
+            LOGGER.error("Unexpected error crawling SmartRecruiters {}: {}", apiUrl, e.getMessage(), e);
         }
 
         return jobs;
     }
+
 }
