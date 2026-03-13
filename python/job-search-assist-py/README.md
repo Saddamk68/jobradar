@@ -1,4 +1,4 @@
-# Job Radar Python API
+# Job Search Assistant Python API
 
 This repository contains a simple FastAPI application for analyzing job descriptions. It uses spaCy to detect roles, match skills, and extract experience from text.
 
@@ -12,7 +12,7 @@ This repository contains a simple FastAPI application for analyzing job descript
 1. **Clone the repository** (if you haven't already):
    ```bash
    git clone <repo-url>
-   cd "Job Search Platform/jobradar/python/job-radar-python"
+   cd "Job Search Platform/job-search-assist/python/job-search-assist-py"
    ```
 
 2. **Create a virtual environment** (recommended):
