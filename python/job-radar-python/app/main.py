@@ -37,11 +37,19 @@ class BatchJobRequest(BaseModel):
 @app.post("/analyze/batch")
 def analyze_jobs_batch(requests: List[BatchJobRequest]):
 
-    responses = []
+    # Pre-extract descriptions for batch NLP processing
+    descriptions = [
+        (r.jobDescription or "").lower() for r in requests
+    ]
 
-    for request in requests:
-        result = process_job(
-            request.jobDescription,
+    # nlp.pipe() processes all docs in one optimized pass — much faster than looping nlp()
+    docs = list(nlp.pipe(descriptions))
+
+    responses = []
+    for i, request in enumerate(requests):
+        result = process_job_with_doc(
+            docs[i],
+            descriptions[i],
             request.targetSkills,
             request.experienceYears
         )
@@ -50,16 +58,9 @@ def analyze_jobs_batch(requests: List[BatchJobRequest]):
     return responses
 
 
-# -------- SHARED PROCESSING FUNCTION --------
-def process_job(description, targetSkills, experienceYears):
+# Split process_job into two — one that accepts a pre-computed doc
+def process_job_with_doc(doc, text, targetSkills, experienceYears):
 
-    if description is None:
-        description = ""
-
-    doc = nlp(description.lower())
-    text = description.lower()
-
-    # Role detection
     if "engineer" not in text and "developer" not in text:
         return {
             "extractedSkills": [],
@@ -80,26 +81,27 @@ def process_job(description, targetSkills, experienceYears):
         else:
             missing_skills.append(skill)
 
-    skill_score = (
-        len(matched_skills) / len(targetSkills)
-        if targetSkills else 0
-    )
+    skill_score = len(matched_skills) / len(targetSkills) if targetSkills else 0
 
     experience_pattern = r"(\d+)\+?\s*(years|year)"
     matches = re.findall(experience_pattern, text)
     extracted_experience = int(matches[0][0]) if matches else None
 
     experience_score = 1.0
-    if extracted_experience:
-        if extracted_experience > experienceYears:
-            experience_score = 0.8
-
-    final_score = round(skill_score * experience_score, 2)
+    if extracted_experience and extracted_experience > experienceYears:
+        experience_score = 0.8
 
     return {
         "extractedSkills": matched_skills,
         "missingSkills": missing_skills,
-        "matchScore": final_score,
+        "matchScore": round(skill_score * experience_score, 2),
         "experienceDetected": extracted_experience,
         "roleType": "Technical"
     }
+
+
+# Keep the single /analyze endpoint working as before
+def process_job(description, targetSkills, experienceYears):
+    text = (description or "").lower()
+    doc = nlp(text)
+    return process_job_with_doc(doc, text, targetSkills, experienceYears)
