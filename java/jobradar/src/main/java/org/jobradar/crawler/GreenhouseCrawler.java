@@ -57,24 +57,51 @@ public class GreenhouseCrawler implements AtsCrawler {
             }
 
             for (JsonNode jobNode : jobsArray) {
+                // Filter non-English jobs
+                String language = jobNode.has("language")
+                        ? jobNode.get("language").get("name").asText("")
+                        : "";
+                if (!language.isBlank() && !language.equalsIgnoreCase("English")) {
+                    LOGGER.debug("Skipping non-English job: {} [{}]", jobNode.get("title").asText(), language);
+                    continue;
+                }
 
                 String title = jobNode.get("title").asText();
                 String jobUrl = jobNode.get("absolute_url").asText();
                 JsonNode locationNode = jobNode.get("location");
+
                 String location = locationNode != null && locationNode.has("name")
                         ? locationNode.get("name").asText()
                         : "";
                 String description = jobNode.has("content")
                         ? jobNode.get("content").asText()
                         : "";
-
+                String publishedAtRaw = jobNode.has("first_published")
+                        ? jobNode.get("first_published").asText()
+                        : null;
                 String updatedAtRaw = jobNode.has("updated_at")
                         ? jobNode.get("updated_at").asText()
                         : null;
 
-                OffsetDateTime updatedAt = null;
-                if (updatedAtRaw != null) {
-                    updatedAt = OffsetDateTime.parse(updatedAtRaw);
+                LocalDate postedDate = null;
+                LocalDateTime lastSeenAt = LocalDateTime.now();
+
+                // first_published_at is the actual job post date — prefer it
+                if (publishedAtRaw != null && !publishedAtRaw.isBlank()) {
+                    try {
+                        postedDate = OffsetDateTime.parse(publishedAtRaw).toLocalDate();
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to parse first_published_at: {}", publishedAtRaw);
+                    }
+                }
+
+                // updated_at for lastSeenAt tracking
+                if (updatedAtRaw != null && !updatedAtRaw.isBlank()) {
+                    try {
+                        lastSeenAt = OffsetDateTime.parse(updatedAtRaw).toLocalDateTime();
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to parse updated_at: {}", updatedAtRaw);
+                    }
                 }
 
                 JobPosting job = JobPosting.builder()
@@ -85,9 +112,9 @@ public class GreenhouseCrawler implements AtsCrawler {
                         .jobTitle(title)
                         .jobUrl(jobUrl)
                         .jobDescription(description)
-                        .postedDate(updatedAt != null ? updatedAt.toLocalDate() : LocalDate.now())
+                        .postedDate(postedDate)          // null if not available — don't fake it
                         .firstSeenAt(LocalDateTime.now())
-                        .lastSeenAt(updatedAt != null ? updatedAt.toLocalDateTime() : LocalDateTime.now())
+                        .lastSeenAt(lastSeenAt)
                         .build();
 
                 jobs.add(job);

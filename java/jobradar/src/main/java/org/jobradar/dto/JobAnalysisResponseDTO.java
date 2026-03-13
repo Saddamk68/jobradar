@@ -3,6 +3,8 @@ package org.jobradar.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 @Builder
 public class JobAnalysisResponseDTO {
@@ -13,5 +15,6 @@ public class JobAnalysisResponseDTO {
     private Double matchScore;
     private String extractedSkills;
     private String experienceRange;
+    private LocalDate postedDate;
 
 }

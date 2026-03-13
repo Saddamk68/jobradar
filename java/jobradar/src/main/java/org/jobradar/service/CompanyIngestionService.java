@@ -122,6 +122,16 @@ public class CompanyIngestionService {
                     continue;
                 }
 
+                // Backfill postedDate from Python if the crawler didn't set it
+                if (job.getPostedDate() == null && analysis.getPostedDate() != null) {
+                    try {
+                        job.setPostedDate(LocalDate.parse(analysis.getPostedDate()));
+                    } catch (Exception e) {
+                        log.warn("Failed to parse postedDate '{}' for job: {}",
+                                analysis.getPostedDate(), job.getJobUrl());
+                    }
+                }
+
                 // IMPORTANT: Filter low scores
                 if (analysis.getMatchScore() < jobRadarProperties.getThreshold()) {
                     continue;

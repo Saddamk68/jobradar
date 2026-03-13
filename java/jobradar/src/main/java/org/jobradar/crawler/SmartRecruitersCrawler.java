@@ -3,6 +3,7 @@ package org.jobradar.crawler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.jobradar.dto.SmartRecruitersJobDetailDTO;
 import org.jobradar.entity.AtsPlatform;
 import org.jobradar.entity.Company;
 import org.jobradar.entity.JobPosting;
@@ -35,7 +36,6 @@ public class SmartRecruitersCrawler implements AtsCrawler {
 
         String apiUrl = null;
         try {
-            // Extract company identifier from URL
             String companyIdentifier = atsJobUrl.substring(atsJobUrl.lastIndexOf("/") + 1);
 
             apiUrl = "https://api.smartrecruiters.com/v1/companies/"
@@ -43,7 +43,6 @@ public class SmartRecruitersCrawler implements AtsCrawler {
                     + "/postings";
 
             String response = restTemplate.getForObject(apiUrl, String.class);
-
             JsonNode root = objectMapper.readTree(response);
             JsonNode postings = root.get("content");
 
@@ -52,33 +51,57 @@ public class SmartRecruitersCrawler implements AtsCrawler {
             }
 
             for (JsonNode jobNode : postings) {
-                String title = jobNode.get("name").asText();
-                String jobUrl = jobNode.get("ref").asText();
-                String location = jobNode.get("location").get("city").asText("");
 
-                String updatedAtRaw = jobNode.has("releasedDate")
+                // Language filter — skip non-English
+                JsonNode langNode = jobNode.path("language");
+                String languageCode = langNode.has("code") ? langNode.get("code").asText("") : "";
+                if (!languageCode.isBlank() && !languageCode.equalsIgnoreCase("en")) {
+                    LOGGER.debug("Skipping non-English job: {} [{}]", jobNode.get("name").asText(), languageCode);
+                    continue;
+                }
+
+                String jobId = jobNode.get("id").asText();
+                String title = jobNode.get("name").asText();
+                String location = jobNode.path("location").path("city").asText("");
+
+                // releasedDate is the actual posting date
+                String releasedDateRaw = jobNode.has("releasedDate")
                         ? jobNode.get("releasedDate").asText()
                         : null;
 
-                OffsetDateTime updatedAt = null;
-                if (updatedAtRaw != null) {
-                    updatedAt = OffsetDateTime.parse(updatedAtRaw);
+                LocalDate postedDate = null;
+                if (releasedDateRaw != null && !releasedDateRaw.isBlank()) {
+                    try {
+                        postedDate = OffsetDateTime.parse(releasedDateRaw).toLocalDate();
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to parse releasedDate '{}' for job: {}", releasedDateRaw, jobId);
+                    }
                 }
+
+                // Detail call — gets postingUrl (real apply URL) + full description
+                SmartRecruitersJobDetailDTO detail = fetchJobDetail(companyIdentifier, jobId);
 
                 JobPosting job = JobPosting.builder()
                         .active(true)
                         .jobTitle(title)
-                        .jobUrl(jobUrl)
+                        .jobUrl(detail.getPostingUrl())   // postingUrl from detail, NOT ref from listing
                         .location(location)
                         .company(company)
                         .atsPlatform(platform)
-                        .jobDescription("") // SmartRecruiters requires another call for full description
-                        .postedDate(updatedAt != null ? updatedAt.toLocalDate() : LocalDate.now())
+                        .jobDescription(detail.getDescription())
+                        .postedDate(postedDate)
                         .firstSeenAt(LocalDateTime.now())
-                        .lastSeenAt(updatedAt != null ? updatedAt.toLocalDateTime() : LocalDateTime.now())
+                        .lastSeenAt(LocalDateTime.now())
                         .build();
 
                 jobs.add(job);
+
+                // Small delay to avoid rate limiting
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
 
         } catch (HttpClientErrorException.NotFound e) {
@@ -96,6 +119,66 @@ public class SmartRecruitersCrawler implements AtsCrawler {
         }
 
         return jobs;
+    }
+
+    /**
+     * Fetches the job detail page which contains:
+     * - postingUrl: the real human-readable apply URL (e.g. https://jobs.smartrecruiters.com/Visa/744000114540402-...)
+     * - jobAd.sections: full structured job description
+     * <p>
+     * The listing API's "ref" field is an API URL that returns JSON — never use it as jobUrl.
+     */
+    private SmartRecruitersJobDetailDTO fetchJobDetail(String companyIdentifier, String jobId) {
+        try {
+            String detailUrl = "https://api.smartrecruiters.com/v1/companies/"
+                    + companyIdentifier
+                    + "/postings/"
+                    + jobId;
+
+            String response = restTemplate.getForObject(detailUrl, String.class);
+            JsonNode root = objectMapper.readTree(response);
+
+            // postingUrl is the real apply page — this is what goes in jobUrl column
+            String postingUrl = root.has("postingUrl")
+                    ? root.get("postingUrl").asText("")
+                    : "";
+
+            // Fallback if postingUrl somehow missing
+            if (postingUrl.isBlank()) {
+                postingUrl = "https://jobs.smartrecruiters.com/" + companyIdentifier + "/" + jobId;
+                LOGGER.warn("postingUrl missing for jobId {}, using fallback URL", jobId);
+            }
+
+            // Build description from structured sections
+            JsonNode sections = root.path("jobAd").path("sections");
+            StringBuilder sb = new StringBuilder();
+            appendSection(sb, sections, "companyDescription");
+            appendSection(sb, sections, "jobDescription");
+            appendSection(sb, sections, "qualifications");
+            appendSection(sb, sections, "additionalInformation");
+
+            return SmartRecruitersJobDetailDTO.builder()
+                    .postingUrl(postingUrl)
+                    .description(sb.toString().trim())
+                    .build();
+
+        } catch (Exception e) {
+            LOGGER.warn("Failed to fetch job detail for jobId {}: {}", jobId, e.getMessage());
+            // Return fallback URL so job isn't lost entirely
+            return SmartRecruitersJobDetailDTO.builder()
+                    .postingUrl("https://jobs.smartrecruiters.com/" + companyIdentifier + "/" + jobId)
+                    .build();
+        }
+    }
+
+    private void appendSection(StringBuilder sb, JsonNode sections, String sectionName) {
+        JsonNode section = sections.path(sectionName);
+        if (!section.isMissingNode() && section.has("text")) {
+            String text = section.get("text").asText("");
+            if (!text.isBlank()) {
+                sb.append(text).append("\n\n");
+            }
+        }
     }
 
 }
