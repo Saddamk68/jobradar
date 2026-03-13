@@ -24,6 +24,7 @@ public class JobQueryService {
                         .matchScore(ja.getMatchScore())
                         .extractedSkills(ja.getExtractedSkills())
                         .experienceRange(ja.getExperienceRange())
+                        .postedDate(ja.getJob().getPostedDate())
                         .build()
                 )
                 .toList();

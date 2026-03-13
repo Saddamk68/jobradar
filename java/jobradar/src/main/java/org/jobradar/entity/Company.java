@@ -29,9 +29,6 @@ public class Company {
 
     private String name;
 
-    @Column(name = "career_page_url")
-    private String careerPageUrl;
-
     private String industry;
 
     private Boolean active;

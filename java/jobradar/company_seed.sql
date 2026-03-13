@@ -1,19 +1,24 @@
-INSERT INTO ats_platform (NAME, base_url_pattern)
-VALUES
-('Greenhouse', 'greenhouse.io'),
-('SmartRecruiters', 'smartrecruiters.com'),
-('Workday', 'myworkdayjobs.com'),
-('Lever', 'lever.co');
+-- ============================================================
+-- JobRadar Company Seed Data
+-- Schema: company (no career_page_url) + company_ats (holds URL)
+-- ============================================================
 
-INSERT INTO target_skill (skill_name, weight)
-VALUES
-('Java', 1.0),
-('Spring Boot', 1.2),
-('Kafka', 1.1);
+USE job_radar;
 
-INSERT INTO target_role (role_name, min_experience, max_experience)
-VALUES ('Backend Engineer', 4, 8);
+-- ============================================================
+-- ATS PLATFORM SEED (run first if not already seeded)
+-- ============================================================
 
+INSERT IGNORE INTO ats_platform (id, name, base_url_pattern, job_path_pattern, active) VALUES
+(1, 'Greenhouse',      'https://boards.greenhouse.io/%s',        '/jobs', 1),
+(2, 'SmartRecruiters', 'https://careers.smartrecruiters.com/%s', '',      1),
+(3, 'Workday',         'https://%s.wd1.myworkdayjobs.com',       '/jobs', 1),
+(4, 'Lever',           'https://jobs.lever.co/%s',               '',      1);
+
+-- ============================================================
+-- STEP 1: INSERT COMPANIES (name + industry only)
+-- UNIQUE KEY on name — safe to re-run with INSERT IGNORE
+-- ============================================================
 
 INSERT IGNORE INTO company (name, industry, active) VALUES
 

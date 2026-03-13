@@ -1,12 +1,12 @@
 package org.jobradar.client;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jobradar.client.dto.PythonAnalyzeRequest;
 import org.jobradar.client.dto.PythonAnalyzeResponse;
 import org.jobradar.entity.JobPosting;
 import org.jobradar.entity.TargetSkill;
 import org.jobradar.repository.TargetSkillRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class PythonClient {
 
@@ -38,6 +37,12 @@ public class PythonClient {
     // Circuit state
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
     private volatile long circuitOpenedAt = 0;
+
+    public PythonClient(TargetSkillRepository targetSkillRepository,
+                        @Qualifier("pythonRestTemplate") RestTemplate restTemplate) {
+        this.targetSkillRepository = targetSkillRepository;
+        this.restTemplate = restTemplate;
+    }
 
     public PythonAnalyzeResponse analyze(String jobDescription, int experienceYears) {
         if (isCircuitOpen()) {
