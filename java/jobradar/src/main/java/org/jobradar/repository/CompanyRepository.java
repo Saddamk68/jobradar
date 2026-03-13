@@ -12,6 +12,6 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
 
     List<Company> findByActiveTrue();
 
-    Optional<Company> findByName(String name);
+    Optional<Company> findByNameIgnoreCase(String name);
 
 }

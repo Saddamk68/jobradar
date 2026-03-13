@@ -15,7 +15,7 @@ public class JobScheduler {
     private final JobIngestionService jobIngestionService;
     private final JobAlertService jobAlertService;
 
-    // Runs once every 24 hours
+    // Runs every day at 2:00 AM
     @Scheduled(cron = "0 0 2 * * ?")
     public void runDailyJobCrawl() {
 

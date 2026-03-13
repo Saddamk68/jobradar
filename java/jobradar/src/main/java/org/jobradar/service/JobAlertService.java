@@ -65,7 +65,7 @@ public class JobAlertService {
                 scoredJobs.entrySet()
                         .stream()
                         .sorted(Map.Entry.<JobPosting, Double>comparingByValue().reversed())
-                        .limit(5)
+                        .limit(10)
                         .toList();
 
         StringBuilder html = new StringBuilder();
