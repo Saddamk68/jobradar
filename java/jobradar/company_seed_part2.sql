@@ -498,7 +498,7 @@ INSERT IGNORE INTO company_ats (company_id, ats_platform_id, ats_job_url, active
 ((SELECT id FROM company WHERE name = 'Netlify'),               1, 'https://boards.greenhouse.io/netlify',               1),
 ((SELECT id FROM company WHERE name = 'OpenAI'),                1, 'https://boards.greenhouse.io/openai',                1),
 ((SELECT id FROM company WHERE name = 'Anthropic'),             1, 'https://boards.greenhouse.io/anthropic',             1),
-((SELECT id FROM company WHERE name = 'Perplexity AI'),         1, 'https://boards.greenhouse.io/perplexityai',          1),
+((SELECT id FROM company WHERE name = 'Perplexity AI'),         1, 'https://boards.greenhouse.io/perplexity',            1),
 ((SELECT id FROM company WHERE name = 'Runway'),                1, 'https://boards.greenhouse.io/runwayml',              1),
 ((SELECT id FROM company WHERE name = 'ElevenLabs'),            1, 'https://boards.greenhouse.io/elevenlabs',            1),
 ((SELECT id FROM company WHERE name = 'Synthesia'),             1, 'https://boards.greenhouse.io/synthesia',             1),
