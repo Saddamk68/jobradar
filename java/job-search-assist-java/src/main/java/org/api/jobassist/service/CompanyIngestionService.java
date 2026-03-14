@@ -3,7 +3,6 @@ package org.api.jobassist.service;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.api.jobassist.client.PythonClient;
 import org.api.jobassist.client.dto.PythonAnalyzeResponse;
@@ -17,6 +16,8 @@ import org.api.jobassist.entity.JobPosting;
 import org.api.jobassist.metrics.JobSearchMetrics;
 import org.api.jobassist.repository.JobAnalysisRepository;
 import org.api.jobassist.repository.JobPostingRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,10 +30,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CompanyIngestionService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CompanyIngestionService.class);
 
     private final JobPostingRepository jobPostingRepository;
     private final JobAnalysisRepository jobAnalysisRepository;
@@ -46,7 +48,7 @@ public class CompanyIngestionService {
     @Transactional
     public void ingestCompany(CompanyAts mapping) {
         Company company = mapping.getCompany();
-        log.info("Starting ingestion for company: {}", company.getName());
+        LOGGER.info("Starting ingestion for company: {}", company.getName());
 
         Timer.Sample sample = Timer.start(meterRegistry);
         int newJobsCount = 0;
@@ -127,7 +129,7 @@ public class CompanyIngestionService {
                     try {
                         job.setPostedDate(LocalDate.parse(analysis.getPostedDate()));
                     } catch (Exception e) {
-                        log.warn("Failed to parse postedDate '{}' for job: {}",
+                        LOGGER.warn("Failed to parse postedDate '{}' for job: {}",
                                 analysis.getPostedDate(), job.getJobUrl());
                     }
                 }
@@ -176,7 +178,7 @@ public class CompanyIngestionService {
         }
 
         sample.stop(metrics.getIngestionTimer());
-        log.info("""
+        LOGGER.info("""
                         Company ingestion completed.
                         Company: {}
                         Total Crawled: {}

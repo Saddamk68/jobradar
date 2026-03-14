@@ -1,16 +1,18 @@
 package org.api.jobassist.scheduler;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.api.jobassist.service.JobAlertService;
 import org.api.jobassist.service.JobIngestionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class JobScheduler {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JobScheduler.class);
 
     private final JobIngestionService jobIngestionService;
     private final JobAlertService jobAlertService;
@@ -19,12 +21,12 @@ public class JobScheduler {
     @Scheduled(cron = "0 0 2 * * ?")
     public void runDailyJobCrawl() {
 
-        log.info("Starting scheduled job crawl...");
+        LOGGER.info("Starting scheduled job crawl...");
 
         jobIngestionService.ingestJobs();
         jobAlertService.sendDailyDigest();
 
-        log.info("Completed scheduled job crawl.");
+        LOGGER.info("Completed scheduled job crawl.");
     }
 
 }

@@ -1,10 +1,11 @@
 package org.api.jobassist.service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.api.jobassist.entity.JobAnalysis;
 import org.api.jobassist.entity.JobPosting;
 import org.api.jobassist.repository.JobAnalysisRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,8 +18,9 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class JobAlertService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JobAlertService.class);
 
     private static final double MIN_SCORE_THRESHOLD = 0.4;
     private static final int MAX_JOBS_PER_COMPANY = 10;
@@ -35,7 +37,7 @@ public class JobAlertService {
                 jobAnalysisRepository.findRecentUnnotifiedAboveScore(yesterday, MIN_SCORE_THRESHOLD);
 
         if (recentAnalyses.isEmpty()) {
-            log.info("No recent qualifying jobs found. Skipping email.");
+            LOGGER.info("No recent qualifying jobs found. Skipping email.");
             return;
         }
 
@@ -84,7 +86,7 @@ public class JobAlertService {
                     .append("</tr>");
 
             totalEmailsSent++;
-            log.info("Sent company email — {} ({} jobs)", companyName, topJobs.size());
+            LOGGER.info("Sent company email — {} ({} jobs)", companyName, topJobs.size());
         }
 
         // Send summary email last
@@ -92,7 +94,7 @@ public class JobAlertService {
             sendSummaryEmail(totalEmailsSent, byCompany.size(), summaryRows.toString());
         }
 
-        log.info("Daily digest complete — {} company emails sent.", totalEmailsSent);
+        LOGGER.info("Daily digest complete — {} company emails sent.", totalEmailsSent);
     }
 
     private String buildCompanyEmail(String companyName, List<JobAnalysis> jobs) {

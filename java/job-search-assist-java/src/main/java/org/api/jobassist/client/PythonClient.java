@@ -1,11 +1,12 @@
 package org.api.jobassist.client;
 
-import lombok.extern.slf4j.Slf4j;
 import org.api.jobassist.client.dto.PythonAnalyzeRequest;
 import org.api.jobassist.client.dto.PythonAnalyzeResponse;
 import org.api.jobassist.entity.JobPosting;
 import org.api.jobassist.entity.TargetSkill;
 import org.api.jobassist.repository.TargetSkillRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -20,8 +21,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
-@Slf4j
 public class PythonClient {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PythonClient.class);
 
     private final TargetSkillRepository targetSkillRepository;
     private final RestTemplate restTemplate;
@@ -46,7 +48,7 @@ public class PythonClient {
 
     public PythonAnalyzeResponse analyze(String jobDescription, int experienceYears) {
         if (isCircuitOpen()) {
-            log.warn("Python circuit breaker is OPEN. Skipping analyze call.");
+            LOGGER.warn("Python circuit breaker is OPEN. Skipping analyze call.");
             return null;
         }
 
@@ -73,11 +75,11 @@ public class PythonClient {
                 return response.getBody();
 
             } catch (Exception e) {
-                log.warn("Python analyze attempt {} failed", attempt, e);
+                LOGGER.warn("Python analyze attempt {} failed", attempt, e);
                 recordFailure();
 
                 if (attempt == MAX_RETRIES) {
-                    log.error("Python analyze failed after {} attempts", MAX_RETRIES);
+                    LOGGER.error("Python analyze failed after {} attempts", MAX_RETRIES);
                     return null;
                 }
                 sleep();
@@ -88,7 +90,7 @@ public class PythonClient {
 
     public List<PythonAnalyzeResponse> batchAnalyze(List<JobPosting> jobs) {
         if (isCircuitOpen()) {
-            log.warn("Python circuit breaker is OPEN. Skipping batch analyze.");
+            LOGGER.warn("Python circuit breaker is OPEN. Skipping batch analyze.");
             return Collections.emptyList();
         }
 
@@ -122,11 +124,11 @@ public class PythonClient {
                 return Arrays.asList(body);
 
             } catch (Exception e) {
-                log.warn("Python batch analyze attempt {} failed", attempt, e);
+                LOGGER.warn("Python batch analyze attempt {} failed", attempt, e);
                 recordFailure();
 
                 if (attempt == MAX_RETRIES) {
-                    log.error("Python batch analyze failed after {} attempts", MAX_RETRIES);
+                    LOGGER.error("Python batch analyze failed after {} attempts", MAX_RETRIES);
                     return Collections.emptyList();
                 }
                 sleep();
@@ -152,7 +154,7 @@ public class PythonClient {
 
         if (now - circuitOpenedAt > CIRCUIT_OPEN_DURATION_MS) {
             // Reset circuit after cooldown
-            log.info("Circuit breaker resetting. Allowing Python calls again.");
+            LOGGER.info("Circuit breaker resetting. Allowing Python calls again.");
             consecutiveFailures.set(0);
             return false;
         }
@@ -165,7 +167,7 @@ public class PythonClient {
 
         if (failures == FAILURE_THRESHOLD) {
             circuitOpenedAt = System.currentTimeMillis();
-            log.error("Circuit breaker OPENED after {} consecutive failures", FAILURE_THRESHOLD);
+            LOGGER.error("Circuit breaker OPENED after {} consecutive failures", FAILURE_THRESHOLD);
         }
     }
 

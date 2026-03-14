@@ -1,9 +1,10 @@
 package org.api.jobassist.service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.api.jobassist.entity.CompanyAts;
 import org.api.jobassist.repository.CompanyAtsRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,8 +14,9 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class JobIngestionService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JobIngestionService.class);
 
     private final CompanyAtsRepository companyAtsRepository;
     private final CompanyIngestionService companyIngestionService;
@@ -32,7 +34,7 @@ public class JobIngestionService {
                 try {
                     companyIngestionService.ingestCompany(mapping);
                 } catch (Exception e) {
-                    log.error("Failed ingestion for company: {}",
+                    LOGGER.error("Failed ingestion for company: {}",
                             mapping.getCompany().getName(), e);
                 }
             });
@@ -46,7 +48,7 @@ public class JobIngestionService {
             Thread.currentThread().interrupt();
         }
 
-        log.info("Job ingestion cycle completed.");
+        LOGGER.info("Job ingestion cycle completed.");
     }
 
 }

@@ -1,10 +1,11 @@
 package org.api.jobassist.controller;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.api.jobassist.dto.JobAnalysisResponseDTO;
 import org.api.jobassist.service.JobAlertService;
 import org.api.jobassist.service.JobQueryService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,11 +18,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class JobController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JobController.class);
 
     private final JobQueryService jobQueryService;
     private final JobAlertService jobAlertService;
@@ -35,7 +37,7 @@ public class JobController {
     @PostMapping("/alerts/trigger")
     public ResponseEntity<Map<String, String>> triggerDailyDigest() {
         try {
-            log.info("Manual trigger of daily digest at {}", LocalDateTime.now());
+            LOGGER.info("Manual trigger of daily digest at {}", LocalDateTime.now());
             jobAlertService.sendDailyDigest();
             return ResponseEntity.ok(Map.of(
                     "status", "success",
@@ -43,7 +45,7 @@ public class JobController {
                     "triggeredAt", LocalDateTime.now().toString()
             ));
         } catch (Exception e) {
-            log.error("Failed to trigger daily digest: {}", e.getMessage(), e);
+            LOGGER.error("Failed to trigger daily digest: {}", e.getMessage(), e);
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of(
