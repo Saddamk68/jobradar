@@ -6,10 +6,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling
 @SpringBootApplication
-public class JobSearchAssistApplication {
+public class JobAssistApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(org.api.jobassist.JobSearchAssistApplication.class, args);
+        SpringApplication.run(JobAssistApplication.class, args);
     }
 
 }
