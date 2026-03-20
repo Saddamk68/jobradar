@@ -3,7 +3,7 @@
 -- Schema: company (no career_page_url) + company_ats (holds URL)
 -- ============================================================
 
-USE job_radar;
+USE job_assist_dev;
 
 -- ============================================================
 -- ATS PLATFORM SEED (run first if not already seeded)
@@ -14,6 +14,13 @@ INSERT IGNORE INTO ats_platform (id, name, base_url_pattern, job_path_pattern, a
 (2, 'SmartRecruiters', 'https://careers.smartrecruiters.com/%s', '',      1),
 (3, 'Workday',         'https://%s.wd1.myworkdayjobs.com',       '/jobs', 1),
 (4, 'Lever',           'https://jobs.lever.co/%s',               '',      1);
+
+INSERT INTO target_skill (skill_name, weight)
+VALUES
+('Java', 1.0);
+
+INSERT INTO target_role (role_name, min_experience, max_experience)
+VALUES ('Backend Engineer', 5, 10);
 
 -- ============================================================
 -- STEP 1: INSERT COMPANIES (name + industry only)

@@ -3,7 +3,7 @@
 -- Additional ~500 companies (Greenhouse + SmartRecruiters)
 -- ============================================================
 
-USE job_radar;
+USE job_assist_dev;
 
 -- ============================================================
 -- STEP 1: INSERT COMPANIES

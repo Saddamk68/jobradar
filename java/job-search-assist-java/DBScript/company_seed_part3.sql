@@ -3,7 +3,7 @@
 -- Global SaaS, Semiconductor, Consulting, Media & More
 -- ============================================================
 
-USE job_radar;
+USE job_assist_dev;
 
 INSERT IGNORE INTO company (name, industry, active) VALUES
 
