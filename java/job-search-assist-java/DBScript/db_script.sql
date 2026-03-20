@@ -1,6 +1,6 @@
-CREATE DATABASE `job_radar_dev`;
+CREATE DATABASE `job_assist_dev`;
 
-USE `job_radar_dev`;
+USE `job_assist_dev`;
 
 /*Table structure for table `ats_platform` */
 

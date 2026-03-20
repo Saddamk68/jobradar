@@ -5,7 +5,7 @@ spring:
   application:
     name: jobassist
   profiles:
-    active: prod
+    active: dev
   mail:
     host: smtp.gmail.com
     port: 587

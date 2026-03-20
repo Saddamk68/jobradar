@@ -7,12 +7,10 @@ VALUES
 
 INSERT INTO target_skill (skill_name, weight)
 VALUES
-('Java', 1.0),
-('Spring Boot', 1.2),
-('Kafka', 1.1);
+('Java', 1.0);
 
 INSERT INTO target_role (role_name, min_experience, max_experience)
-VALUES ('Backend Engineer', 4, 8);
+VALUES ('Backend Engineer', 5, 10);
 
 
 INSERT IGNORE INTO company (name, industry, active) VALUES
