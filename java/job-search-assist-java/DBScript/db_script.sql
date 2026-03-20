@@ -1,19 +1,19 @@
-CREATE DATABASE `job_radar`;
+CREATE DATABASE `job_radar_dev`;
 
-USE `job_radar`;
+USE `job_radar_dev`;
 
 /*Table structure for table `ats_platform` */
 
 DROP TABLE IF EXISTS `ats_platform`;
 
 CREATE TABLE `ats_platform` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) NOT NULL,
-  `base_url_pattern` varchar(255) DEFAULT NULL,
-  `job_path_pattern` varchar(255) DEFAULT NULL,
-  `active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL,
+  `base_url_pattern` VARCHAR(255) DEFAULT NULL,
+  `job_path_pattern` VARCHAR(255) DEFAULT NULL,
+  `active` TINYINT(1) DEFAULT '1',
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 );
 
@@ -22,13 +22,12 @@ CREATE TABLE `ats_platform` (
 DROP TABLE IF EXISTS `company`;
 
 CREATE TABLE `company` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(150) NOT NULL,
-  `career_page_url` varchar(500) DEFAULT NULL,
-  `industry` varchar(100) DEFAULT NULL,
-  `active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(150) UNIQUE NOT NULL,
+  `industry` VARCHAR(100) DEFAULT NULL,
+  `active` TINYINT(1) DEFAULT '1',
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_company_active` (`active`)
 );
@@ -38,12 +37,12 @@ CREATE TABLE `company` (
 DROP TABLE IF EXISTS `company_ats`;
 
 CREATE TABLE `company_ats` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `company_id` bigint NOT NULL,
-  `ats_platform_id` bigint NOT NULL,
-  `ats_job_url` varchar(500) NOT NULL,
-  `active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `company_id` BIGINT NOT NULL,
+  `ats_platform_id` BIGINT NOT NULL,
+  `ats_job_url` VARCHAR(500) NOT NULL,
+  `active` TINYINT(1) DEFAULT '1',
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `company_id` (`company_id`),
   KEY `ats_platform_id` (`ats_platform_id`),
@@ -52,40 +51,23 @@ CREATE TABLE `company_ats` (
   CONSTRAINT `company_ats_ibfk_2` FOREIGN KEY (`ats_platform_id`) REFERENCES `ats_platform` (`id`)
 );
 
-/*Table structure for table `job_analysis` */
-
-DROP TABLE IF EXISTS `job_analysis`;
-
-CREATE TABLE `job_analysis` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `job_id` bigint NOT NULL,
-  `match_score` decimal(5,4) DEFAULT NULL,
-  `extracted_skills` text,
-  `experience_range` varchar(50) DEFAULT NULL,
-  `signals` text,
-  `analyzed_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_analysis_job` (`job_id`),
-  CONSTRAINT `job_analysis_ibfk_1` FOREIGN KEY (`job_id`) REFERENCES `job_posting` (`id`)
-);
-
 /*Table structure for table `job_posting` */
 
 DROP TABLE IF EXISTS `job_posting`;
 
 CREATE TABLE `job_posting` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `company_id` bigint NOT NULL,
-  `ats_platform_id` bigint NOT NULL,
-  `job_title` varchar(500) DEFAULT NULL,
-  `job_url` varchar(1000) DEFAULT NULL,
-  `job_description` longtext,
-  `location` varchar(500) DEFAULT NULL,
-  `posted_date` date DEFAULT NULL,
-  `first_seen_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_seen_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `active` tinyint(1) DEFAULT '1',
-  `last_recommended_at` timestamp NULL DEFAULT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `company_id` BIGINT NOT NULL,
+  `ats_platform_id` BIGINT NOT NULL,
+  `job_title` VARCHAR(300) DEFAULT NULL,
+  `job_url` VARCHAR(600) DEFAULT NULL,
+  `job_description` LONGTEXT,
+  `location` VARCHAR(200) DEFAULT NULL,
+  `posted_date` DATE DEFAULT NULL,
+  `first_seen_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_seen_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `active` TINYINT(1) DEFAULT '1',
+  `last_recommended_at` TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `job_url` (`job_url`),
   KEY `ats_platform_id` (`ats_platform_id`),
@@ -96,17 +78,34 @@ CREATE TABLE `job_posting` (
   CONSTRAINT `job_posting_ibfk_2` FOREIGN KEY (`ats_platform_id`) REFERENCES `ats_platform` (`id`)
 );
 
+/*Table structure for table `job_analysis` */
+
+DROP TABLE IF EXISTS `job_analysis`;
+
+CREATE TABLE `job_analysis` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `job_id` BIGINT NOT NULL,
+  `match_score` DECIMAL(5,4) DEFAULT NULL,
+  `extracted_skills` TEXT,
+  `experience_range` VARCHAR(50) DEFAULT NULL,
+  `signals` TEXT,
+  `analyzed_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_analysis_job` (`job_id`),
+  CONSTRAINT `job_analysis_ibfk_1` FOREIGN KEY (`job_id`) REFERENCES `job_posting` (`id`)
+);
+
 /*Table structure for table `target_role` */
 
 DROP TABLE IF EXISTS `target_role`;
 
 CREATE TABLE `target_role` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `role_name` varchar(150) NOT NULL,
-  `min_experience` int DEFAULT NULL,
-  `max_experience` int DEFAULT NULL,
-  `active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `role_name` VARCHAR(150) NOT NULL,
+  `min_experience` INT DEFAULT NULL,
+  `max_experience` INT DEFAULT NULL,
+  `active` TINYINT(1) DEFAULT '1',
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 );
 
@@ -115,10 +114,10 @@ CREATE TABLE `target_role` (
 DROP TABLE IF EXISTS `target_skill`;
 
 CREATE TABLE `target_skill` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `skill_name` varchar(150) NOT NULL,
-  `weight` decimal(3,2) DEFAULT '1.00',
-  `active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `skill_name` VARCHAR(150) NOT NULL,
+  `weight` DECIMAL(3,2) DEFAULT '1.00',
+  `active` TINYINT(1) DEFAULT '1',
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 );
